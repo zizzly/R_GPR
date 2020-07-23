@@ -1,0 +1,79 @@
+bash: fg: no job control
+bash: /Users/elizabethramsey/Projects/dotfiles/zshfunctions: No such file or directory
+
+The default interactive shell is now zsh.
+To update your account to use zsh, please run `chsh -s /bin/zsh`.
+For more details, please visit https://support.apple.com/kb/HT208050.
+]0;~/GPRtests[?1034h>>[K>>wget http://cran.r-project.org/src/base/R-3/R-3.1.2.tar.gz
+bash: wget: command not found
+]0;~/GPRtests>>sudo apt-get -y install libcurl4-gnutls-dev libxml2-dev libssl-dev
+Password:
+sudo: apt-get: command not found
+]0;~/GPRtests>>sudo apt-get -y install libcurl4-gnutls-dev libxml2-dev libssl-dev
+sudo: apt-get: command not found
+]0;~/GPRtests>>sudo apt-get -y install libcurl4-gnutls-dev libxml2-dev libssl-dev
+sudo: apt-get: command not found
+]0;~/GPRtests>>sudo apt-get update 
+sudo: apt-get: command not found
+]0;~/GPRtests>>bash: fg: no job control
+bash: /Users/elizabethramsey/Projects/dotfiles/zshfunctions: No such file or directory
+
+The default interactive shell is now zsh.
+To update your account to use zsh, please run `chsh -s /bin/zsh`.
+For more details, please visit https://support.apple.com/kb/HT208050.
+]0;~/GPRtests[?1034h(base) >>conda install -c conda-forge stdlib-list
+Collecting package metadata (current_repodata.json): - \ | / - \ | / - \ | / - \ | / - \ | / - \ | / - \ | / - \ | / - \ | / - \ | / - \ | / - \ | / - \ | / - \ | / - \ | / - \ | / done
+Solving environment: \ | / - \ | / - \ | / - \ | / - \ | / - \ | / - \ | / - \ | / done
+
+
+==> WARNING: A newer version of conda exists. <==
+  current version: 4.8.2
+  latest version: 4.8.3
+
+Please update conda by running
+
+    $ conda update -n base -c defaults conda
+
+
+
+## Package Plan ##
+
+  environment location: /Users/elizabethramsey/opt/anaconda3
+
+  added / updated specs:
+    - stdlib-list
+
+
+The following packages will be downloaded:
+
+    package                    |            build
+    ---------------------------|-----------------
+    conda-4.8.3                |   py37hc8dfbb8_1         3.0 MB  conda-forge
+    python_abi-3.7             |          1_cp37m           4 KB  conda-forge
+    stdlib-list-0.6.0          |           py37_0          16 KB  conda-forge
+    ------------------------------------------------------------
+                                           Total:         3.0 MB
+
+The following NEW packages will be INSTALLED:
+
+  python_abi         conda-forge/osx-64::python_abi-3.7-1_cp37m
+  stdlib-list        conda-forge/osx-64::stdlib-list-0.6.0-py37_0
+
+The following packages will be UPDATED:
+
+  conda                       pkgs/main::conda-4.8.2-py37_0 --> conda-forge::conda-4.8.3-py37hc8dfbb8_1
+
+
+Proceed ([y]/n)? y y
+
+
+Downloading and Extracting Packages
+conda-4.8.3          | 3.0 MB    |                                                                   |   0% conda-4.8.3          | 3.0 MB    | 3                                                                 |   1% conda-4.8.3          | 3.0 MB    | ################4                                                 |  25% conda-4.8.3          | 3.0 MB    | ########################################6                         |  63% conda-4.8.3          | 3.0 MB    | ################################################################# | 100% 
+stdlib-list-0.6.0    | 16 KB     |                                                                   |   0% stdlib-list-0.6.0    | 16 KB     | ################################################################6 | 100% stdlib-list-0.6.0    | 16 KB     | ################################################################# | 100% 
+python_abi-3.7       | 4 KB      |                                                                   |   0% python_abi-3.7       | 4 KB      | ################################################################# | 100% 
+Preparing transaction: \ done
+Verifying transaction: / done
+Executing transaction: \ | / - done
+]0;~/GPRtests(base) >>open /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg
+The file /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg does not exist.
+]0;~/GPRtests(base) >>
