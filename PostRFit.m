@@ -24,7 +24,7 @@ DiffFit=DiffFit(:, 2:30);  DriftFit=DriftFit(:, 2:30);  BasisDiff=BasisDiff(:, 2
 KDiff=KDiff(:, 2:30); KDrif=KDrift(2:end); 
 
 nNaN=1; x0MIN=1; x0MAX=1; Uplot=1; x0Plot=1; STB=1; 
-for k=1:Nu-1
+for k=1:1
     
     D1xfit=DriftFit(:,k);
     xfitu=xfitsave{k}; nu=length(xfitu); D1xfit=D1xfit(1:nu); %puts nans at bottom

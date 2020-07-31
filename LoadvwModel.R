@@ -30,8 +30,8 @@ xfitU <- xfitU[!is.na(xfitU)]
 diffParam=select_diffusion_parameters(xU,1,uncertainty,targetIndex,varX=NULL)
 xm=matrix(seq(min(xU,na.rm=TRUE),max(xU,na.rm=TRUE),length.out = m),ncol=1)
 
-#driftKer=sde_kernel("exp_kernel",list('amplitude'=uncertainty,'lengthScales'=driftLength),inputDim,eps)
-#diffKer=sde_kernel("exp_const_kernel",list('maxAmplitude'=diffParam$kernelAmplitude,'expAmplitude'=diffParam$kernelAmplitude*1e-3,'lengthScales'=diffLength),inputDim,eps)
+driftKer=sde_kernel("exp_kernel",list('amplitude'=uncertainty,'lengthScales'=driftLength),inputDim,eps)
+diffKer=sde_kernel("exp_const_kernel",list('maxAmplitude'=diffParam$kernelAmplitude,'expAmplitude'=diffParam$kernelAmplitude*1e-3,'lengthScales'=diffLength),inputDim,eps)
 
 #fit=sde_vi(inputDim,xU,dt,xm,driftKer,diffKer,diffParam$v,10,2,Tol)
 
