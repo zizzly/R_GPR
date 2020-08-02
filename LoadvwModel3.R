@@ -83,7 +83,14 @@ BasisDiffSave[2,k]=Basis2
 uncertainty=KDriftSave[1,k] #Sigma from matlab model fit 
 
 driftLength=KDriftSave[2,k] #sigmaL from matlab model fit 
-diffLength=KDiffSave[2,k]  }   #
+diffLength=KDiffSave[2,k] 
+write.csv(DriftFit,'DriftFit.csv')
+write.csv(DiffFit,'DiffFit.csv')
+write.csv(KDriftSave,'KDrift.csv')
+write.csv(KDiffSave,'KDiff.csv')
+write.csv(BasisDiffSave,'BasisDiff.csv')
+
+ }   #
 
 write.csv(DriftFit,'DriftFit.csv')
 write.csv(DiffFit,'DiffFit.csv')
