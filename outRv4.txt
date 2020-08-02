@@ -1,0 +1,154 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-conda_cos6-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> rm(list=ls())    #clear variables
+> library("voila")
+Loading required package: yuima
+Loading required package: zoo
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+Loading required package: stats4
+Loading required package: expm
+Loading required package: Matrix
+
+Attaching package: ‘expm’
+
+The following object is masked from ‘package:Matrix’:
+
+    expm
+
+Loading required package: cubature
+Loading required package: mvtnorm
+########################################
+This is YUIMA Project package v.1.9.6
+Why don't you try yuimaGUI package?
+Visit: http://www.yuima-project.com
+########################################
+
+Attaching package: ‘yuima’
+
+The following object is masked from ‘package:stats’:
+
+    simulate
+
+Loading required package: Rcpp
+> ## Load Data 
+> 
+> description <- "FirstAttempt"
+> 
+> filename <- paste0("vwXBin",description,".txt")
+> xData <- read.csv(filename)
+> xData=t(xData)
+> filename <- paste0("vwXfitBin",description,".txt")
+> xfitData <- read.csv(filename)
+> xfitData=t(xfitData)
+> 
+> #UData <- read.csv("vwU.txt")
+> #UData=t(UData)
+> Nu <- 30  
+> 
+> Nx <- 1000
+> 
+> ## Initialize
+> DriftFit <- matrix(nrow=Nx, ncol=Nu)
+> DiffFit <- matrix(nrow=Nx, ncol=Nu)
+> KDriftSave <- matrix(nrow=2,ncol=Nu)
+> KDiffSave <- matrix(nrow=2,ncol=Nu)
+> BasisDiffSave <- matrix(nrow=2,ncol=Nu)
+> 
+> dt=1
+> ## Variables  
+> m=100               #Matlab using 2000
+> uncertainty=0.001  #Sigma from matlab model fit 
+> targetIndex=1
+> inputDim=1
+> driftLength=0.03 #sigmaL from matlab model fit 
+> diffLength=0.01    #
+> eps=1e-11
+> Tol=1e-10
+> 
+> MaxIt <-20 #number of itterationns 
+> HPit <-  5     #number of hyperparameter itts
+> 
+> ## will eventually by a loop over U's
+> for (k in 1:Nu)
++ {xU <- xData[,k]
++ xU <- xU[!is.na(xU)]
++ xfitU <- xfitData[,k]
++ xfitU <- xfitU[!is.na(xfitU)]
++ 
++ xfitU <- data.matrix(xfitU)
++ 
++ 
++ diffParam=select_diffusion_parameters(xU,1,uncertainty,targetIndex,varX=NULL)
++ xm=matrix(seq(min(xU,na.rm=TRUE),max(xU,na.rm=TRUE),length.out = m),ncol=1)
++ 
++ driftKer=sde_kernel("exp_kernel",list('amplitude'=uncertainty,'lengthScales'=driftLength),inputDim,eps)
++ diffKer=sde_kernel("exp_const_kernel",list('maxAmplitude'=diffParam$kernelAmplitude,'expAmplitude'=diffParam$kernelAmplitude*1e-3,'lengthScales'=diffLength),inputDim,eps)
++ 
++ fit=sde_vi(inputDim,xU,dt,xm,driftKer,diffKer,diffParam$v,MaxIt,HPit,Tol)
++ 
++ driftPredict=predict(fit$drift,xfitU,lognormal=FALSE, ,quantiles = c(0.05,0.95))
++ diffPredict=predict(fit$diff,xfitU,lognormal=TRUE, ,quantiles = c(0.05,0.95))
++ 
++ D1U=driftPredict$mean
++ D2U=diffPredict$mean
++ 
++ D1U=data.matrix(D1U)
++ D2U=data.matrix(D2U)
++ nu <- length(D1U)
++ 
++ DriftFit[1:nu,k] = D1U
++ DriftFit[1:nu,k] = D1U
++ DiffFit[1:nu,k] =  D2U
++ 
++ Basis1=diffParam$v 
++ Basis2=diffParam$kernelAmplitude
++ 
++ 
++ KDriftSave[1,k]=fit$drift$gpKernel$amplitude
++ KDriftSave[2,k]=fit$driftHyperparams
++ KDiffSave[,k]=fit$diffHyperparams
++ 
++ BasisDiffSave[1,k]=Basis1
++ BasisDiffSave[2,k]=Basis2
++ uncertainty=KDriftSave[1,k] #Sigma from matlab model fit 
++ 
++ driftLength=KDriftSave[2,k] #sigmaL from matlab model fit 
++ diffLength=KDiffSave[2,k]  }   #
+Starting Variational Inference
+Initial Lower Bound L = -nan
+Iteration 1| Distributions update | L = -nan
+Iteration 1| Hyperparameter optimization | L = -nan
+HP = 0.03 0.00699 0.01 0.00644 0.0071 0.00775 0.0084 0.00905 0.00971 0.0104 0.011 0.0117 0.0123 0.013 0.0136 0.0143 0.0149 0.0156 0.0162 0.0169 0.0175 0.0182 0.0188 0.0195 0.0202 0.0208 0.0215 0.0221 0.0228 0.0234 0.0241 0.0247 0.0254 0.026 0.0267 0.0273 0.028 0.0286 0.0293 0.0299 0.0306 0.0312 0.0319 0.0326 0.0332 0.0339 0.0345 0.0352 0.0358 0.0365 0.0371 0.0378 0.0384 0.0391 0.0397 0.0404 0.041 0.0417 0.0423 0.043 0.0436 0.0443 0.045 0.0456 0.0463 0.0469 0.0476 0.0482 0.0489 0.0495 0.0502 0.0508 0.0515 0.0521 0.0528 0.0534 0.0541 0.0547 0.0554 0.056 0.0567 0.0574 0.058 0.0587 0.0593 0.06 0.0606 0.0613 0.0619 0.0626 0.0632 0.0639 0.0645 0.0652 0.0658 0.0665 0.0671 0.0678 0.0685 0.0691 0.0698 0.0704 0.0711 -13.9 
+
+Iteration 2| Distributions update | L = -nan
+Iteration 2| Hyperparameter optimization | L = -nan
+HP = 0.03 0.00699 0.01 0.00644 0.0071 0.00775 0.0084 0.00905 0.00971 0.0104 0.011 0.0117 0.0123 0.013 0.0136 0.0143 0.0149 0.0156 0.0162 0.0169 0.0175 0.0182 0.0188 0.0195 0.0202 0.0208 0.0215 0.0221 0.0228 0.0234 0.0241 0.0247 0.0254 0.026 0.0267 0.0273 0.028 0.0286 0.0293 0.0299 0.0306 0.0312 0.0319 0.0326 0.0332 0.0339 0.0345 0.0352 0.0358 0.0365 0.0371 0.0378 0.0384 0.0391 0.0397 0.0404 0.041 0.0417 0.0423 0.043 0.0436 0.0443 0.045 0.0456 0.0463 0.0469 0.0476 0.0482 0.0489 0.0495 0.0502 0.0508 0.0515 0.0521 0.0528 0.0534 0.0541 0.0547 0.0554 0.056 0.0567 0.0574 0.058 0.0587 0.0593 0.06 0.0606 0.0613 0.0619 0.0626 0.0632 0.0639 0.0645 0.0652 0.0658 0.0665 0.0671 0.0678 0.0685 0.0691 0.0698 0.0704 0.0711 -13.9 
+
+Iteration 3| Distributions update | L = -nan
+Iteration 3| Hyperparameter optimization | L = -nan
+HP = 0.03 0.00699 0.01 0.00644 0.0071 0.00775 0.0084 0.00905 0.00971 0.0104 0.011 0.0117 0.0123 0.013 0.0136 0.0143 0.0149 0.0156 0.0162 0.0169 0.0175 0.0182 0.0188 0.0195 0.0202 0.0208 0.0215 0.0221 0.0228 0.0234 0.0241 0.0247 0.0254 0.026 0.0267 0.0273 0.028 0.0286 0.0293 0.0299 0.0306 0.0312 0.0319 0.0326 0.0332 0.0339 0.0345 0.0352 0.0358 0.0365 0.0371 0.0378 0.0384 0.0391 0.0397 0.0404 0.041 0.0417 0.0423 0.043 0.0436 0.0443 0.045 0.0456 0.0463 0.0469 0.0476 0.0482 0.0489 0.0495 0.0502 0.0508 0.0515 0.0521 0.0528 0.0534 0.0541 0.0547 0.0554 0.056 0.0567 0.0574 0.058 0.0587 0.0593 0.06 0.0606 0.0613 0.0619 0.0626 0.0632 0.0639 0.0645 0.0652 0.0658 0.0665 0.0671 0.0678 0.0685 0.0691 0.0698 0.0704 0.0711 -13.9 
+
+Iteration 4| Distributions update | L = -nan

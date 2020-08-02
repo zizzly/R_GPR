@@ -1,0 +1,95 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-conda_cos6-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> rm(list=ls())    #clear variables
+> 
+> library("voila")
+Loading required package: yuima
+Loading required package: zoo
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+Loading required package: stats4
+Loading required package: expm
+Loading required package: Matrix
+
+Attaching package: ‘expm’
+
+The following object is masked from ‘package:Matrix’:
+
+    expm
+
+Loading required package: cubature
+Loading required package: mvtnorm
+########################################
+This is YUIMA Project package v.1.9.6
+Why don't you try yuimaGUI package?
+Visit: http://www.yuima-project.com
+########################################
+
+Attaching package: ‘yuima’
+
+The following object is masked from ‘package:stats’:
+
+    simulate
+
+Loading required package: Rcpp
+> ## Load Data 
+> xData <- read.csv("vwXBin.txt")
+> xData=t(xData)
+> xfitData <- read.csv("vwXfitBin.txt")
+> xfitData=t(xfitData)
+> 
+> #UData <- read.csv("vwU.txt")
+> #UData=t(UData)
+> 
+> dt=1 
+> ## Variables  
+> m=100               #Matlab using 18 
+> uncertainty=0.004  #Sigma from matlab model fit 
+> targetIndex=1
+> inputDim=1
+> driftLength=0.0338  #sigmaL from matlab model fit 
+> diffLength=0.0085    #
+> eps=1e-12
+> Tol=1e-10
+> 
+> ## will eventually by a loop over U's
+> k=18; 
+> xU <- xData[,k]
+> xU <- xU[!is.na(xU)]
+> xfitU <- xfitData[,k]
+> xfitU <- xfitU[!is.na(xfitU)]
+> 
+> diffParam=select_diffusion_parameters(xU,1,uncertainty,targetIndex,varX=NULL)
+> xm=matrix(seq(min(xU,na.rm=TRUE),max(xU,na.rm=TRUE),length.out = m),ncol=1)
+> 
+> #driftKer=sde_kernel("exp_kernel",list('amplitude'=uncertainty,'lengthScales'=driftLength),inputDim,eps)
+> #diffKer=sde_kernel("exp_const_kernel",list('maxAmplitude'=diffParam$kernelAmplitude,'expAmplitude'=diffParam$kernelAmplitude*1e-3,'lengthScales'=diffLength),inputDim,eps)
+> 
+> #fit=sde_vi(inputDim,xU,dt,xm,driftKer,diffKer,diffParam$v,10,2,Tol)
+> 
+> #driftPredict=predict(fit$drift,xfitU,lognormal=FALSE,quantiles = c(0.05,0.95))
+> #diffPredict=predict(fit$diff,xfitU,lognormal=TRUE, ,quantiles = c(0.05,0.95))
+> 
+> 

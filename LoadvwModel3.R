@@ -26,7 +26,7 @@ BasisDiffSave <- matrix(nrow=2,ncol=Nu)
 
 dt=1
 ## Variables  
-m=100               #Matlab using 2000
+m=20               #Matlab using 2000
 uncertainty=0.001  #Sigma from matlab model fit 
 targetIndex=1
 inputDim=1
@@ -39,7 +39,7 @@ MaxIt <-20 #number of itterationns
 HPit <-  5     #number of hyperparameter itts
 
 ## will eventually by a loop over U's
-for (k in 1:1)
+for (k in 1:Nu)
 {xU <- xData[,k]
 xU <- xU[!is.na(xU)]
 xfitU <- xfitData[,k]
