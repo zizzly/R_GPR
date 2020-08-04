@@ -24,7 +24,7 @@ DiffFit=DiffFit(:, 2:30);  DriftFit=DriftFit(:, 2:30);  BasisDiff=BasisDiff(:, 2
 KDiff=KDiff(:, 2:30); KDrif=KDrift(2:end); 
 
 nNaN=1; x0MIN=1; x0MAX=1; Uplot=1; x0Plot=1; STB=1; 
-for k=1:1
+for k=1:Nu-1
     
     D1xfit=DriftFit(:,k);
     xfitu=xfitsave{k}; nu=length(xfitu); D1xfit=D1xfit(1:nu); %puts nans at bottom
@@ -68,20 +68,47 @@ istable=find(Eqms(:,6)<0);
  EqmU=Eqms(iun,:);
  
  
+ds=0.001;Smax=5;  dx=0.0001; dU=0.001;  itts=50; x01=max(x0Plot); 
+ 
+[Umodel,xmodel,~]= vw_pseudoArclength(Q,cd,lambda,x01,dx,dU,ds,Smax,itts);
+ 
 figure 
 grid on 
 hold on
+plot(Umodel,xmodel,'k.')
 errorbar(Eqms(:,1),Eqms(:,2),Eqms(:,3)-Eqms(:,2),Eqms(:,4)-Eqms(:,2),'ko')
-scatter(EqmS(:,1),EqmS(:,2),[],EqmS(:,5),'filled')
-scatter(EqmU(:,1),EqmU(:,2),[],EqmU(:,5),'filled','h')
+scatter(EqmS(:,1),EqmS(:,2),[],EqmS(:,5),'filled','s')
+scatter(EqmU(:,1),EqmU(:,2),180,EqmU(:,5),'filled','p')%legend('Model','extracted','location','best')
 xlabel('U -scaled'); ylabel('x0')
 caxis([0,1]);
-colormap(flipud(gray))
-%axis([0,2.2,-0.02,0.8])
+colormap(flipud(winter))
+axis([0,2.5,-0.01,0.08])
 h=colorbar; ylabel(h,'fraction of zeros obtained')
 
 
  
  
 
+%drift=figure('visible','off'); 
+figure
+imagesc(Ubin(1:end-1),xfit,DriftFit)
+colormap jet
+caxis([-0.015,0.015])
+xlabel('U - scaled'); ylabel('x')
+set(gca,'YDir','normal')
+colorbar
+title('Drift')
+%saveas(drift,'driftAdam.png');
+
+%diff=figure('visible','off');
+figure
+imagesc(Ubin(1:end-1),xfit,sqrt(DiffFit))
+colormap jet
+set(gca,'YDir','normal')
+caxis([0,5e-3])
+colorbar
+xlabel('U - scaled'); ylabel('x')
+title('Diffusion')
+set(gca,'YDir','normal')
+%saveas(diff,'diffAdam.png');
 

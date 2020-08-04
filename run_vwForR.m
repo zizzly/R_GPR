@@ -1,6 +1,6 @@
 close all; clear all; 
 
-description='FirstAttempt'; 
+description='SecondAttempt'; 
 
 cd = 1.3e-3;                % drag coeff
 lambda = 4e-4;              % normalized surface feedback parameter from vdW
@@ -21,26 +21,26 @@ xfit=linspace(min(x),max(x),Nx)'; dx=xfit(2)-xfit(1);
  
 %% intialize 
  xsave=cell(1,Nu);
- xfitsave=cell(Nu,1); 
+ %xfitsave=cell(Nu,1); 
 %% calculate GPR model fit for each U, output D1x, D2x, x0's for each  
  for bu=1:Bu
      %% extract uconst points
-     indU=binU==bu;          %index of points in data that have Ubin(bu)
+   indU=binU==bu;          %index of points in data that have Ubin(bu)
    xsave{bu}=x(indU); %pull corresponding Dx, xU points at that Uvalue
-   [~,indS]=min(abs(xfit-min(xsave{bu})));[~,indE]=min(abs(xfit-max(xsave{bu}))); %% find parts of xfit vector corresponding to xU range 
-   xfitsave{bu}=[xfit(indS):dx:xfit(indE)]';
+   %[~,indS]=min(abs(xfit-min(xsave{bu})));[~,indE]=min(abs(xfit-max(xsave{bu}))); %% find parts of xfit vector corresponding to xU range 
+   %xfitsave{bu}=[xfit(indS):dx:xfit(indE)]';
    
    
  end 
 
- Usave{1}=U;
- Usave{2}=Ubin; 
+ %Usave{1}=U;
+ %Usave{2}=Ubin; 
  
  
 
 save(strcat('vwRunForR',description)); 
  
 writecell(xsave',strcat('vwXBin',description,'.txt'))
-writecell(xfitsave,strcat('vwXfitBin',description,'.txt'))
-
- 
+writematrix(xfit,strcat('vwXfit',description,'.txt'))
+writematrix(U,strcat('vwU',description,'.txt')) 
+writematrix(Ubin,strcat('vwU',description,'.txt')) 
