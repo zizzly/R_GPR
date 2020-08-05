@@ -1,0 +1,2518 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-conda_cos6-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> rm(list=ls())    #clear variables
+> library("voila")
+Loading required package: yuima
+Loading required package: zoo
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+Loading required package: stats4
+Loading required package: expm
+Loading required package: Matrix
+
+Attaching package: ‘expm’
+
+The following object is masked from ‘package:Matrix’:
+
+    expm
+
+Loading required package: cubature
+Loading required package: mvtnorm
+########################################
+This is YUIMA Project package v.1.9.6
+Why don't you try yuimaGUI package?
+Visit: http://www.yuima-project.com
+########################################
+
+Attaching package: ‘yuima’
+
+The following object is masked from ‘package:stats’:
+
+    simulate
+
+Loading required package: Rcpp
+> ## Load Data 
+> 
+> description <- "SecondAttempt"
+> 
+> filename <- paste0("vwXBin",description,".txt")
+> xData <- read.csv(filename)
+> xData=t(xData)
+> filename <- paste0("vwXfit",description,".txt")
+> xfit <- read.csv(filename)
+> xfit=t(xfit)
+> 
+> #UData <- read.csv("vwU.txt")
+> #UData=t(UData)
+> Nu <- 30  
+> 
+> Nx <- 1000
+> 
+> ## Initialize
+> DriftFit <- matrix(nrow=Nx, ncol=Nu)
+> DiffFit <- matrix(nrow=Nx, ncol=Nu)
+> KDriftSave <- matrix(nrow=2,ncol=Nu)
+> KDiffSave <- matrix(nrow=2,ncol=Nu)
+> BasisDiffSave <- matrix(nrow=2,ncol=Nu)
+> 
+> dt=1
+> ## Variables  
+> m=20               #Matlab using 2000
+> uncertainty=0.001  #Sigma from matlab model fit 
+> targetIndex=1
+> inputDim=1
+> driftLength=0.03 #sigmaL from matlab model fit 
+> diffLength=0.01    #
+> eps=1e-11
+> Tol=1e-10
+> 
+> MaxIt <-20 #number of itterationns 
+> HPit <-  5     #number of hyperparameter itts
+> 
+> ## will eventually by a loop over U's
+> 
+> # Start the clock!
+> ptm <- proc.time()
+> 
+> for (k in 1:Nu)
++ {xU <- xData[,k]
++ xU <- xU[!is.na(xU)]
++ indS= which.min(abs(xfit-quantile(xU,0.01)))
++ indE= which.min(abs(xfit-quantile(xU,0.99)))
++ xfitU = xfit[indS:indE]
++ xfitU <- data.matrix(xfitU)
++ 
++ diffParam=select_diffusion_parameters(xU,1,uncertainty,targetIndex,varX=NULL)
++ xm=matrix(seq(min(xU,na.rm=TRUE),max(xU,na.rm=TRUE),length.out = m),ncol=1)
++ 
++ driftKer=sde_kernel("exp_kernel",list('amplitude'=uncertainty,'lengthScales'=driftLength),inputDim,eps)
++ diffKer=sde_kernel("exp_const_kernel",list('maxAmplitude'=diffParam$kernelAmplitude,'expAmplitude'=diffParam$kernelAmplitude*1e-3,'lengthScales'=diffLength),inputDim,eps)
++ 
++ fit=sde_vi(inputDim,xU,dt,xm,driftKer,diffKer,diffParam$v,MaxIt,HPit,Tol)
++ 
++ driftPredict=predict(fit$drift,xfitU,lognormal=FALSE, ,quantiles = c(0.05,0.95))
++ diffPredict=predict(fit$diff,xfitU,lognormal=TRUE, ,quantiles = c(0.05,0.95))
++ 
++ D1U=driftPredict$mean
++ D2U=diffPredict$mean
++ 
++ D1U=data.matrix(D1U)
++ D2U=data.matrix(D2U)
++ nu <- length(D1U)
++ 
++ DriftFit[indS:indE,k] = D1U
++ DiffFit[indS:indE,k] =  D2U
++ 
++ Basis1=diffParam$v 
++ Basis2=diffParam$kernelAmplitude
++ 
++ 
++ KDriftSave[1,k]=fit$drift$gpKernel$amplitude
++ KDriftSave[2,k]=fit$driftHyperparams
++ KDiffSave[,k]=fit$diffHyperparams
++ 
++ BasisDiffSave[1,k]=Basis1
++ BasisDiffSave[2,k]=Basis2
++ uncertainty=KDriftSave[1,k] #Sigma from matlab model fit 
++ 
++ driftLength=KDriftSave[2,k] #sigmaL from matlab model fit 
++ diffLength=KDiffSave[2,k] 
++ write.csv(DriftFit,'DriftFit.csv')
++ write.csv(DiffFit,'DiffFit.csv')
++ write.csv(KDriftSave,'KDrift.csv')
++ write.csv(KDiffSave,'KDiff.csv')
++ write.csv(BasisDiffSave,'BasisDiff.csv')
++ 
++ }   #
+Starting Variational Inference
+Initial Lower Bound L = -1.4505e+07
+Iteration 1| Distributions update | L = -4312.1203
+Iteration 1| Hyperparameter optimization | L = -4311.914
+HP = 0.03 0.00718 0.01 0.01 0.0131 0.0162 0.0193 0.0225 0.0256 0.0287 0.0318 0.0349 0.038 0.0411 0.0442 0.0473 0.0504 0.0535 0.0566 0.0597 0.0628 0.0659 0.069 -14.1 
+
+Iteration 2| Distributions update | L = -4109.6894
+Iteration 2| Hyperparameter optimization | L = -4109.6844
+HP = 0.03 0.00718 0.01 0.01 0.0131 0.0162 0.0193 0.0225 0.0256 0.0287 0.0318 0.0349 0.038 0.0411 0.0442 0.0473 0.0504 0.0535 0.0566 0.0597 0.0628 0.0659 0.069 -14.1 
+
+Iteration 3| Distributions update | L = -4052.0761
+Iteration 3| Hyperparameter optimization | L = -4052.0761
+HP = 0.03 0.00718 0.01 0.01 0.0131 0.0162 0.0193 0.0225 0.0256 0.0287 0.0318 0.0349 0.038 0.0411 0.0442 0.0473 0.0504 0.0535 0.0566 0.0597 0.0628 0.0659 0.069 -14.1 
+
+Iteration 4| Distributions update | L = -3181.5844
+Iteration 4| Hyperparameter optimization | L = -3149.3785
+HP = 0.03 0.0073 0.01 0.01 0.0131 0.0162 0.0193 0.0225 0.0256 0.0287 0.0318 0.0349 0.038 0.0411 0.0442 0.0473 0.0504 0.0535 0.0566 0.0597 0.0628 0.0659 0.069 -14.1 
+
+Iteration 5| Distributions update | L = -2302.5781
+Iteration 5| Hyperparameter optimization | L = -2302.5781
+HP = 0.03 0.0073 0.01 0.01 0.0131 0.0162 0.0193 0.0225 0.0256 0.0287 0.0318 0.0349 0.038 0.0411 0.0442 0.0473 0.0504 0.0535 0.0566 0.0597 0.0628 0.0659 0.069 -14.1 
+
+Iteration 6| Distributions update | L = -2259.5391
+Iteration 6| Hyperparameter optimization | L = -2259.5391
+HP = 0.03 0.0073 0.01 0.01 0.0131 0.0162 0.0193 0.0225 0.0256 0.0287 0.0318 0.0349 0.038 0.0411 0.0442 0.0473 0.0504 0.0535 0.0566 0.0597 0.0628 0.0659 0.069 -14.1 
+
+Iteration 7| Distributions update | L = -2153.4208
+Iteration 7| Hyperparameter optimization | L = -2153.4208
+HP = 0.03 0.0073 0.01 0.01 0.0131 0.0162 0.0193 0.0225 0.0256 0.0287 0.0318 0.0349 0.038 0.0411 0.0442 0.0473 0.0504 0.0535 0.0566 0.0597 0.0628 0.0659 0.069 -14.1 
+
+Iteration 8| Distributions update | L = -2099.56
+Iteration 8| Hyperparameter optimization | L = -2099.56
+HP = 0.03 0.0073 0.01 0.01 0.0131 0.0162 0.0193 0.0225 0.0256 0.0287 0.0318 0.0349 0.038 0.0411 0.0442 0.0473 0.0504 0.0535 0.0566 0.0597 0.0628 0.0659 0.069 -14.1 
+
+Iteration 9| Distributions update | L = -2085.8437
+Iteration 9| Hyperparameter optimization | L = -2085.8437
+HP = 0.03 0.0073 0.01 0.01 0.0131 0.0162 0.0193 0.0225 0.0256 0.0287 0.0318 0.0349 0.038 0.0411 0.0442 0.0473 0.0504 0.0535 0.0566 0.0597 0.0628 0.0659 0.069 -14.1 
+
+Iteration 10| Distributions update | L = -1841.5524
+Iteration 10| Hyperparameter optimization | L = -1841.1251
+HP = 0.03 0.0073 0.01 0.01 0.0131 0.0162 0.0193 0.0225 0.0256 0.0287 0.0318 0.0349 0.038 0.0411 0.0442 0.0473 0.0504 0.0535 0.0566 0.0597 0.0628 0.0659 0.069 -14.1 
+
+Iteration 11| Distributions update | L = -1530.8114
+Iteration 11| Hyperparameter optimization | L = -1530.8114
+HP = 0.03 0.0073 0.01 0.01 0.0131 0.0162 0.0193 0.0225 0.0256 0.0287 0.0318 0.0349 0.038 0.0411 0.0442 0.0473 0.0504 0.0535 0.0566 0.0597 0.0628 0.0659 0.069 -14.1 
+
+Iteration 12| Distributions update | L = -1398.4502
+Iteration 12| Hyperparameter optimization | L = -1398.4502
+HP = 0.03 0.0073 0.01 0.01 0.0131 0.0162 0.0193 0.0225 0.0256 0.0287 0.0318 0.0349 0.038 0.0411 0.0442 0.0473 0.0504 0.0535 0.0566 0.0597 0.0628 0.0659 0.069 -14.1 
+
+Iteration 13| Distributions update | L = -1327.4732
+Iteration 13| Hyperparameter optimization | L = -1327.4732
+HP = 0.03 0.0073 0.01 0.01 0.0131 0.0162 0.0193 0.0225 0.0256 0.0287 0.0318 0.0349 0.038 0.0411 0.0442 0.0473 0.0504 0.0535 0.0566 0.0597 0.0628 0.0659 0.069 -14.1 
+
+Iteration 14| Distributions update | L = -1039.1186
+Iteration 14| Hyperparameter optimization | L = -1039.1186
+HP = 0.03 0.0073 0.01 0.01 0.0131 0.0162 0.0193 0.0225 0.0256 0.0287 0.0318 0.0349 0.038 0.0411 0.0442 0.0473 0.0504 0.0535 0.0566 0.0597 0.0628 0.0659 0.069 -14.1 
+
+Iteration 15| Distributions update | L = -900.95558
+Iteration 15| Hyperparameter optimization | L = -900.95558
+HP = 0.03 0.0073 0.01 0.01 0.0131 0.0162 0.0193 0.0225 0.0256 0.0287 0.0318 0.0349 0.038 0.0411 0.0442 0.0473 0.0504 0.0535 0.0566 0.0597 0.0628 0.0659 0.069 -14.1 
+
+Iteration 16| Distributions update | L = -868.31517
+Iteration 16| Hyperparameter optimization | L = -868.31517
+HP = 0.03 0.0073 0.01 0.01 0.0131 0.0162 0.0193 0.0225 0.0256 0.0287 0.0318 0.0349 0.038 0.0411 0.0442 0.0473 0.0504 0.0535 0.0566 0.0597 0.0628 0.0659 0.069 -14.1 
+
+Iteration 17| Distributions update | L = -840.06066
+Iteration 17| Hyperparameter optimization | L = -840.06066
+HP = 0.03 0.0073 0.01 0.01 0.0131 0.0162 0.0193 0.0225 0.0256 0.0287 0.0318 0.0349 0.038 0.0411 0.0442 0.0473 0.0504 0.0535 0.0566 0.0597 0.0628 0.0659 0.069 -14.1 
+
+Iteration 18| Distributions update | L = -812.28536
+Iteration 18| Hyperparameter optimization | L = -812.28536
+HP = 0.03 0.0073 0.01 0.01 0.0131 0.0162 0.0193 0.0225 0.0256 0.0287 0.0318 0.0349 0.038 0.0411 0.0442 0.0473 0.0504 0.0535 0.0566 0.0597 0.0628 0.0659 0.069 -14.1 
+
+Iteration 19| Distributions update | L = -795.4203
+Iteration 19| Hyperparameter optimization | L = -795.4203
+HP = 0.03 0.0073 0.01 0.01 0.0131 0.0162 0.0193 0.0225 0.0256 0.0287 0.0318 0.0349 0.038 0.0411 0.0442 0.0473 0.0504 0.0535 0.0566 0.0597 0.0628 0.0659 0.069 -14.1 
+
+Iteration 20| Distributions update | L = -484.83046
+Iteration 20| Hyperparameter optimization | L = -484.83046
+HP = 0.03 0.0073 0.01 0.01 0.0131 0.0162 0.0193 0.0225 0.0256 0.0287 0.0318 0.0349 0.038 0.0411 0.0442 0.0473 0.0504 0.0535 0.0566 0.0597 0.0628 0.0659 0.069 -14.1 
+
+Starting Variational Inference
+Initial Lower Bound L = -2.79e+07
+Iteration 1| Distributions update | L = -262.89829
+Iteration 1| Hyperparameter optimization | L = -261.52673
+HP = 0.03 0.00705 0.01 0.00939 0.013 0.0167 0.0203 0.024 0.0276 0.0312 0.0349 0.0385 0.0421 0.0458 0.0494 0.0531 0.0567 0.0603 0.064 0.0676 0.0713 0.0749 0.0785 -14 
+
+Iteration 2| Distributions update | L = 972.47092
+Iteration 2| Hyperparameter optimization | L = 972.47092
+HP = 0.03 0.00705 0.01 0.00939 0.013 0.0167 0.0203 0.024 0.0276 0.0312 0.0349 0.0385 0.0421 0.0458 0.0494 0.0531 0.0567 0.0603 0.064 0.0676 0.0713 0.0749 0.0785 -14 
+
+Iteration 3| Distributions update | L = 1135.3524
+Iteration 3| Hyperparameter optimization | L = 1136.3294
+HP = 0.03 0.00705 0.01 0.00939 0.013 0.0167 0.0203 0.024 0.0276 0.0312 0.0349 0.0385 0.0421 0.0458 0.0494 0.0531 0.0567 0.0603 0.064 0.0676 0.0713 0.0749 0.0785 -14 
+
+Iteration 4| Distributions update | L = 1177.321
+Iteration 4| Hyperparameter optimization | L = 1177.6305
+HP = 0.03 0.00705 0.01 0.00939 0.013 0.0167 0.0203 0.024 0.0276 0.0312 0.0349 0.0385 0.0421 0.0458 0.0494 0.0531 0.0567 0.0603 0.064 0.0676 0.0713 0.0749 0.0785 -14 
+
+Iteration 5| Distributions update | L = 1249.0725
+Iteration 5| Hyperparameter optimization | L = 1249.0725
+HP = 0.03 0.00705 0.01 0.00939 0.013 0.0167 0.0203 0.024 0.0276 0.0312 0.0349 0.0385 0.0421 0.0458 0.0494 0.0531 0.0567 0.0603 0.064 0.0676 0.0713 0.0749 0.0785 -14 
+
+Iteration 6| Distributions update | L = 1315.2148
+Iteration 6| Hyperparameter optimization | L = 1315.2148
+HP = 0.03 0.00705 0.01 0.00939 0.013 0.0167 0.0203 0.024 0.0276 0.0312 0.0349 0.0385 0.0421 0.0458 0.0494 0.0531 0.0567 0.0603 0.064 0.0676 0.0713 0.0749 0.0785 -14 
+
+Iteration 7| Distributions update | L = 1374.9815
+Iteration 7| Hyperparameter optimization | L = 1374.9815
+HP = 0.03 0.00705 0.01 0.00939 0.013 0.0167 0.0203 0.024 0.0276 0.0312 0.0349 0.0385 0.0421 0.0458 0.0494 0.0531 0.0567 0.0603 0.064 0.0676 0.0713 0.0749 0.0785 -14 
+
+Iteration 8| Distributions update | L = 1389.6243
+Iteration 8| Hyperparameter optimization | L = 1390.8946
+HP = 0.03 0.00705 0.01 0.00939 0.013 0.0167 0.0203 0.024 0.0276 0.0312 0.0349 0.0385 0.0421 0.0458 0.0494 0.0531 0.0567 0.0603 0.064 0.0676 0.0713 0.0749 0.0785 -14 
+
+Iteration 9| Distributions update | L = 1905.4369
+Iteration 9| Hyperparameter optimization | L = 1905.4369
+HP = 0.03 0.00705 0.01 0.00939 0.013 0.0167 0.0203 0.024 0.0276 0.0312 0.0349 0.0385 0.0421 0.0458 0.0494 0.0531 0.0567 0.0603 0.064 0.0676 0.0713 0.0749 0.0785 -14 
+
+Iteration 10| Distributions update | L = 2342.4276
+Iteration 10| Hyperparameter optimization | L = 2342.4276
+HP = 0.03 0.00705 0.01 0.00939 0.013 0.0167 0.0203 0.024 0.0276 0.0312 0.0349 0.0385 0.0421 0.0458 0.0494 0.0531 0.0567 0.0603 0.064 0.0676 0.0713 0.0749 0.0785 -14 
+
+Iteration 11| Distributions update | L = 2365.9136
+Iteration 11| Hyperparameter optimization | L = 2365.9136
+HP = 0.03 0.00705 0.01 0.00939 0.013 0.0167 0.0203 0.024 0.0276 0.0312 0.0349 0.0385 0.0421 0.0458 0.0494 0.0531 0.0567 0.0603 0.064 0.0676 0.0713 0.0749 0.0785 -14 
+
+Iteration 12| Distributions update | L = 2454.9655
+Iteration 12| Hyperparameter optimization | L = 2454.9655
+HP = 0.03 0.00705 0.01 0.00939 0.013 0.0167 0.0203 0.024 0.0276 0.0312 0.0349 0.0385 0.0421 0.0458 0.0494 0.0531 0.0567 0.0603 0.064 0.0676 0.0713 0.0749 0.0785 -14 
+
+Iteration 13| Distributions update | L = 2491.8279
+Iteration 13| Hyperparameter optimization | L = 2491.8279
+HP = 0.03 0.00705 0.01 0.00939 0.013 0.0167 0.0203 0.024 0.0276 0.0312 0.0349 0.0385 0.0421 0.0458 0.0494 0.0531 0.0567 0.0603 0.064 0.0676 0.0713 0.0749 0.0785 -14 
+
+Iteration 14| Distributions update | L = 2516.0599
+Iteration 14| Hyperparameter optimization | L = 2516.0599
+HP = 0.03 0.00705 0.01 0.00939 0.013 0.0167 0.0203 0.024 0.0276 0.0312 0.0349 0.0385 0.0421 0.0458 0.0494 0.0531 0.0567 0.0603 0.064 0.0676 0.0713 0.0749 0.0785 -14 
+
+Iteration 15| Distributions update | L = 2596.9495
+Iteration 15| Hyperparameter optimization | L = 2596.9495
+HP = 0.03 0.00705 0.01 0.00939 0.013 0.0167 0.0203 0.024 0.0276 0.0312 0.0349 0.0385 0.0421 0.0458 0.0494 0.0531 0.0567 0.0603 0.064 0.0676 0.0713 0.0749 0.0785 -14 
+
+Iteration 16| Distributions update | L = 2605.9674
+Iteration 16| Hyperparameter optimization | L = 2605.9674
+HP = 0.03 0.00705 0.01 0.00939 0.013 0.0167 0.0203 0.024 0.0276 0.0312 0.0349 0.0385 0.0421 0.0458 0.0494 0.0531 0.0567 0.0603 0.064 0.0676 0.0713 0.0749 0.0785 -14 
+
+Iteration 17| Distributions update | L = 2634.8451
+Iteration 17| Hyperparameter optimization | L = 2634.8451
+HP = 0.03 0.00705 0.01 0.00939 0.013 0.0167 0.0203 0.024 0.0276 0.0312 0.0349 0.0385 0.0421 0.0458 0.0494 0.0531 0.0567 0.0603 0.064 0.0676 0.0713 0.0749 0.0785 -14 
+
+Iteration 18| Distributions update | L = 2634.8465
+Iteration 18| Hyperparameter optimization | L = 2634.8465
+HP = 0.03 0.00705 0.01 0.00939 0.013 0.0167 0.0203 0.024 0.0276 0.0312 0.0349 0.0385 0.0421 0.0458 0.0494 0.0531 0.0567 0.0603 0.064 0.0676 0.0713 0.0749 0.0785 -14 
+
+Iteration 19| Distributions update | L = 2649.8822
+Iteration 19| Hyperparameter optimization | L = 2649.8822
+HP = 0.03 0.00705 0.01 0.00939 0.013 0.0167 0.0203 0.024 0.0276 0.0312 0.0349 0.0385 0.0421 0.0458 0.0494 0.0531 0.0567 0.0603 0.064 0.0676 0.0713 0.0749 0.0785 -14 
+
+Iteration 20| Distributions update | L = 2663.6157
+Iteration 20| Hyperparameter optimization | L = 2663.6157
+HP = 0.03 0.00705 0.01 0.00939 0.013 0.0167 0.0203 0.024 0.0276 0.0312 0.0349 0.0385 0.0421 0.0458 0.0494 0.0531 0.0567 0.0603 0.064 0.0676 0.0713 0.0749 0.0785 -14 
+
+Starting Variational Inference
+Initial Lower Bound L = -8.57e+07
+Iteration 1| Distributions update | L = 3422.5632
+Iteration 1| Hyperparameter optimization | L = 3422.5632
+HP = 0.03 0.00723 0.01 -0.0019 0.00202 0.00594 0.00986 0.0138 0.0177 0.0216 0.0255 0.0295 0.0334 0.0373 0.0412 0.0451 0.0491 0.053 0.0569 0.0608 0.0647 0.0687 0.0726 -14.1 
+
+Iteration 2| Distributions update | L = 5556.0175
+Iteration 2| Hyperparameter optimization | L = 5558.4777
+HP = 0.03 0.00723 0.01 -0.0019 0.00202 0.00594 0.00986 0.0138 0.0177 0.0216 0.0255 0.0295 0.0334 0.0373 0.0412 0.0451 0.0491 0.053 0.0569 0.0608 0.0647 0.0687 0.0726 -14.1 
+
+Iteration 3| Distributions update | L = 5832.1225
+Iteration 3| Hyperparameter optimization | L = 5832.5151
+HP = 0.03 0.00723 0.01 -0.0019 0.00202 0.00594 0.00986 0.0138 0.0177 0.0216 0.0255 0.0295 0.0334 0.0373 0.0412 0.0451 0.0491 0.053 0.0569 0.0608 0.0647 0.0687 0.0726 -14.1 
+
+Iteration 4| Distributions update | L = 6076.4582
+Iteration 4| Hyperparameter optimization | L = 6076.4582
+HP = 0.03 0.00723 0.01 -0.0019 0.00202 0.00594 0.00986 0.0138 0.0177 0.0216 0.0255 0.0295 0.0334 0.0373 0.0412 0.0451 0.0491 0.053 0.0569 0.0608 0.0647 0.0687 0.0726 -14.1 
+
+Iteration 5| Distributions update | L = 6220.3836
+Iteration 5| Hyperparameter optimization | L = 6220.3836
+HP = 0.03 0.00723 0.01 -0.0019 0.00202 0.00594 0.00986 0.0138 0.0177 0.0216 0.0255 0.0295 0.0334 0.0373 0.0412 0.0451 0.0491 0.053 0.0569 0.0608 0.0647 0.0687 0.0726 -14.1 
+
+Iteration 6| Distributions update | L = 7438.8685
+Iteration 6| Hyperparameter optimization | L = 7438.8685
+HP = 0.03 0.00723 0.01 -0.0019 0.00202 0.00594 0.00986 0.0138 0.0177 0.0216 0.0255 0.0295 0.0334 0.0373 0.0412 0.0451 0.0491 0.053 0.0569 0.0608 0.0647 0.0687 0.0726 -14.1 
+
+Iteration 7| Distributions update | L = 7611.2164
+Iteration 7| Hyperparameter optimization | L = 7611.2164
+HP = 0.03 0.00723 0.01 -0.0019 0.00202 0.00594 0.00986 0.0138 0.0177 0.0216 0.0255 0.0295 0.0334 0.0373 0.0412 0.0451 0.0491 0.053 0.0569 0.0608 0.0647 0.0687 0.0726 -14.1 
+
+Iteration 8| Distributions update | L = 7757.8803
+Iteration 8| Hyperparameter optimization | L = 7757.8803
+HP = 0.03 0.00723 0.01 -0.0019 0.00202 0.00594 0.00986 0.0138 0.0177 0.0216 0.0255 0.0295 0.0334 0.0373 0.0412 0.0451 0.0491 0.053 0.0569 0.0608 0.0647 0.0687 0.0726 -14.1 
+
+Iteration 9| Distributions update | L = 7866.3488
+Iteration 9| Hyperparameter optimization | L = 7866.3488
+HP = 0.03 0.00723 0.01 -0.0019 0.00202 0.00594 0.00986 0.0138 0.0177 0.0216 0.0255 0.0295 0.0334 0.0373 0.0412 0.0451 0.0491 0.053 0.0569 0.0608 0.0647 0.0687 0.0726 -14.1 
+
+Iteration 10| Distributions update | L = 7976.6209
+Iteration 10| Hyperparameter optimization | L = 7976.6209
+HP = 0.03 0.00723 0.01 -0.0019 0.00202 0.00594 0.00986 0.0138 0.0177 0.0216 0.0255 0.0295 0.0334 0.0373 0.0412 0.0451 0.0491 0.053 0.0569 0.0608 0.0647 0.0687 0.0726 -14.1 
+
+Iteration 11| Distributions update | L = 8091.8144
+Iteration 11| Hyperparameter optimization | L = 8091.8144
+HP = 0.03 0.00723 0.01 -0.0019 0.00202 0.00594 0.00986 0.0138 0.0177 0.0216 0.0255 0.0295 0.0334 0.0373 0.0412 0.0451 0.0491 0.053 0.0569 0.0608 0.0647 0.0687 0.0726 -14.1 
+
+Iteration 12| Distributions update | L = 8301.9067
+Iteration 12| Hyperparameter optimization | L = 8301.9067
+HP = 0.03 0.00723 0.01 -0.0019 0.00202 0.00594 0.00986 0.0138 0.0177 0.0216 0.0255 0.0295 0.0334 0.0373 0.0412 0.0451 0.0491 0.053 0.0569 0.0608 0.0647 0.0687 0.0726 -14.1 
+
+Iteration 13| Distributions update | L = 8474.703
+Iteration 13| Hyperparameter optimization | L = 8474.703
+HP = 0.03 0.00723 0.01 -0.0019 0.00202 0.00594 0.00986 0.0138 0.0177 0.0216 0.0255 0.0295 0.0334 0.0373 0.0412 0.0451 0.0491 0.053 0.0569 0.0608 0.0647 0.0687 0.0726 -14.1 
+
+Iteration 14| Distributions update | L = 8503.7494
+Iteration 14| Hyperparameter optimization | L = 8503.7494
+HP = 0.03 0.00723 0.01 -0.0019 0.00202 0.00594 0.00986 0.0138 0.0177 0.0216 0.0255 0.0295 0.0334 0.0373 0.0412 0.0451 0.0491 0.053 0.0569 0.0608 0.0647 0.0687 0.0726 -14.1 
+
+Iteration 15| Distributions update | L = 9045.5649
+Iteration 15| Hyperparameter optimization | L = 9045.5649
+HP = 0.03 0.00723 0.01 -0.0019 0.00202 0.00594 0.00986 0.0138 0.0177 0.0216 0.0255 0.0295 0.0334 0.0373 0.0412 0.0451 0.0491 0.053 0.0569 0.0608 0.0647 0.0687 0.0726 -14.1 
+
+Iteration 16| Distributions update | L = 9116.7041
+Iteration 16| Hyperparameter optimization | L = 9117.0713
+HP = 0.03 0.00723 0.01 -0.0019 0.00202 0.00594 0.00986 0.0138 0.0177 0.0216 0.0255 0.0295 0.0334 0.0373 0.0412 0.0451 0.0491 0.053 0.0569 0.0608 0.0647 0.0687 0.0726 -14.1 
+
+Iteration 17| Distributions update | L = 9168.9917
+Iteration 17| Hyperparameter optimization | L = 9168.9917
+HP = 0.03 0.00723 0.01 -0.0019 0.00202 0.00594 0.00986 0.0138 0.0177 0.0216 0.0255 0.0295 0.0334 0.0373 0.0412 0.0451 0.0491 0.053 0.0569 0.0608 0.0647 0.0687 0.0726 -14.1 
+
+Iteration 18| Distributions update | L = 9199.1507
+Iteration 18| Hyperparameter optimization | L = 9199.1507
+HP = 0.03 0.00723 0.01 -0.0019 0.00202 0.00594 0.00986 0.0138 0.0177 0.0216 0.0255 0.0295 0.0334 0.0373 0.0412 0.0451 0.0491 0.053 0.0569 0.0608 0.0647 0.0687 0.0726 -14.1 
+
+Iteration 19| Distributions update | L = 9230.1628
+Iteration 19| Hyperparameter optimization | L = 9230.1628
+HP = 0.03 0.00723 0.01 -0.0019 0.00202 0.00594 0.00986 0.0138 0.0177 0.0216 0.0255 0.0295 0.0334 0.0373 0.0412 0.0451 0.0491 0.053 0.0569 0.0608 0.0647 0.0687 0.0726 -14.1 
+
+Iteration 20| Distributions update | L = 9425.1948
+Iteration 20| Hyperparameter optimization | L = 9425.1948
+HP = 0.03 0.00723 0.01 -0.0019 0.00202 0.00594 0.00986 0.0138 0.0177 0.0216 0.0255 0.0295 0.0334 0.0373 0.0412 0.0451 0.0491 0.053 0.0569 0.0608 0.0647 0.0687 0.0726 -14.1 
+
+Starting Variational Inference
+Initial Lower Bound L = -6.33e+07
+Iteration 1| Distributions update | L = -638.31797
+Iteration 1| Hyperparameter optimization | L = -628.21459
+HP = 0.03 0.00719 0.01 -0.00152 0.00209 0.00569 0.00929 0.0129 0.0165 0.0201 0.0237 0.0273 0.0309 0.0345 0.0381 0.0417 0.0453 0.0489 0.0525 0.0561 0.0597 0.0633 0.0669 -14.1 
+
+Iteration 2| Distributions update | L = 1267.5119
+Iteration 2| Hyperparameter optimization | L = 1267.5119
+HP = 0.03 0.00719 0.01 -0.00152 0.00209 0.00569 0.00929 0.0129 0.0165 0.0201 0.0237 0.0273 0.0309 0.0345 0.0381 0.0417 0.0453 0.0489 0.0525 0.0561 0.0597 0.0633 0.0669 -14.1 
+
+Iteration 3| Distributions update | L = 1546.2715
+Iteration 3| Hyperparameter optimization | L = 1546.2715
+HP = 0.03 0.00719 0.01 -0.00152 0.00209 0.00569 0.00929 0.0129 0.0165 0.0201 0.0237 0.0273 0.0309 0.0345 0.0381 0.0417 0.0453 0.0489 0.0525 0.0561 0.0597 0.0633 0.0669 -14.1 
+
+Iteration 4| Distributions update | L = 1798.5517
+Iteration 4| Hyperparameter optimization | L = 1798.5517
+HP = 0.03 0.00719 0.01 -0.00152 0.00209 0.00569 0.00929 0.0129 0.0165 0.0201 0.0237 0.0273 0.0309 0.0345 0.0381 0.0417 0.0453 0.0489 0.0525 0.0561 0.0597 0.0633 0.0669 -14.1 
+
+Iteration 5| Distributions update | L = 1922.0048
+Iteration 5| Hyperparameter optimization | L = 1922.0048
+HP = 0.03 0.00719 0.01 -0.00152 0.00209 0.00569 0.00929 0.0129 0.0165 0.0201 0.0237 0.0273 0.0309 0.0345 0.0381 0.0417 0.0453 0.0489 0.0525 0.0561 0.0597 0.0633 0.0669 -14.1 
+
+Iteration 6| Distributions update | L = 1971.9967
+Iteration 6| Hyperparameter optimization | L = 1972.9737
+HP = 0.03 0.00719 0.01 -0.00152 0.00209 0.00569 0.00929 0.0129 0.0165 0.0201 0.0237 0.0273 0.0309 0.0345 0.0381 0.0417 0.0453 0.0489 0.0525 0.0561 0.0597 0.0633 0.0669 -14.1 
+
+Iteration 7| Distributions update | L = 2254.2037
+Iteration 7| Hyperparameter optimization | L = 2254.2037
+HP = 0.03 0.00719 0.01 -0.00152 0.00209 0.00569 0.00929 0.0129 0.0165 0.0201 0.0237 0.0273 0.0309 0.0345 0.0381 0.0417 0.0453 0.0489 0.0525 0.0561 0.0597 0.0633 0.0669 -14.1 
+
+Iteration 8| Distributions update | L = 2334.1328
+Iteration 8| Hyperparameter optimization | L = 2334.1328
+HP = 0.03 0.00719 0.01 -0.00152 0.00209 0.00569 0.00929 0.0129 0.0165 0.0201 0.0237 0.0273 0.0309 0.0345 0.0381 0.0417 0.0453 0.0489 0.0525 0.0561 0.0597 0.0633 0.0669 -14.1 
+
+Iteration 9| Distributions update | L = 3316.0138
+Iteration 9| Hyperparameter optimization | L = 3316.0138
+HP = 0.03 0.00719 0.01 -0.00152 0.00209 0.00569 0.00929 0.0129 0.0165 0.0201 0.0237 0.0273 0.0309 0.0345 0.0381 0.0417 0.0453 0.0489 0.0525 0.0561 0.0597 0.0633 0.0669 -14.1 
+
+Iteration 10| Distributions update | L = 3709.1441
+Iteration 10| Hyperparameter optimization | L = 3709.1441
+HP = 0.03 0.00719 0.01 -0.00152 0.00209 0.00569 0.00929 0.0129 0.0165 0.0201 0.0237 0.0273 0.0309 0.0345 0.0381 0.0417 0.0453 0.0489 0.0525 0.0561 0.0597 0.0633 0.0669 -14.1 
+
+Iteration 11| Distributions update | L = 3868.0261
+Iteration 11| Hyperparameter optimization | L = 3868.0261
+HP = 0.03 0.00719 0.01 -0.00152 0.00209 0.00569 0.00929 0.0129 0.0165 0.0201 0.0237 0.0273 0.0309 0.0345 0.0381 0.0417 0.0453 0.0489 0.0525 0.0561 0.0597 0.0633 0.0669 -14.1 
+
+Iteration 12| Distributions update | L = 4030.2086
+Iteration 12| Hyperparameter optimization | L = 4030.2086
+HP = 0.03 0.00719 0.01 -0.00152 0.00209 0.00569 0.00929 0.0129 0.0165 0.0201 0.0237 0.0273 0.0309 0.0345 0.0381 0.0417 0.0453 0.0489 0.0525 0.0561 0.0597 0.0633 0.0669 -14.1 
+
+Iteration 13| Distributions update | L = 4075.662
+Iteration 13| Hyperparameter optimization | L = 4075.662
+HP = 0.03 0.00719 0.01 -0.00152 0.00209 0.00569 0.00929 0.0129 0.0165 0.0201 0.0237 0.0273 0.0309 0.0345 0.0381 0.0417 0.0453 0.0489 0.0525 0.0561 0.0597 0.0633 0.0669 -14.1 
+
+Iteration 14| Distributions update | L = 4145.871
+Iteration 14| Hyperparameter optimization | L = 4145.871
+HP = 0.03 0.00719 0.01 -0.00152 0.00209 0.00569 0.00929 0.0129 0.0165 0.0201 0.0237 0.0273 0.0309 0.0345 0.0381 0.0417 0.0453 0.0489 0.0525 0.0561 0.0597 0.0633 0.0669 -14.1 
+
+Iteration 15| Distributions update | L = 4517.7071
+Iteration 15| Hyperparameter optimization | L = 4517.7071
+HP = 0.03 0.00719 0.01 -0.00152 0.00209 0.00569 0.00929 0.0129 0.0165 0.0201 0.0237 0.0273 0.0309 0.0345 0.0381 0.0417 0.0453 0.0489 0.0525 0.0561 0.0597 0.0633 0.0669 -14.1 
+
+Iteration 16| Distributions update | L = 4867.0965
+Iteration 16| Hyperparameter optimization | L = 4867.0965
+HP = 0.03 0.00719 0.01 -0.00152 0.00209 0.00569 0.00929 0.0129 0.0165 0.0201 0.0237 0.0273 0.0309 0.0345 0.0381 0.0417 0.0453 0.0489 0.0525 0.0561 0.0597 0.0633 0.0669 -14.1 
+
+Iteration 17| Distributions update | L = 4900.8175
+Iteration 17| Hyperparameter optimization | L = 4900.8175
+HP = 0.03 0.00719 0.01 -0.00152 0.00209 0.00569 0.00929 0.0129 0.0165 0.0201 0.0237 0.0273 0.0309 0.0345 0.0381 0.0417 0.0453 0.0489 0.0525 0.0561 0.0597 0.0633 0.0669 -14.1 
+
+Iteration 18| Distributions update | L = 6821.7497
+Iteration 18| Hyperparameter optimization | L = 6821.7497
+HP = 0.03 0.00719 0.01 -0.00152 0.00209 0.00569 0.00929 0.0129 0.0165 0.0201 0.0237 0.0273 0.0309 0.0345 0.0381 0.0417 0.0453 0.0489 0.0525 0.0561 0.0597 0.0633 0.0669 -14.1 
+
+Iteration 19| Distributions update | L = 7544.8446
+Iteration 19| Hyperparameter optimization | L = 7544.8446
+HP = 0.03 0.00719 0.01 -0.00152 0.00209 0.00569 0.00929 0.0129 0.0165 0.0201 0.0237 0.0273 0.0309 0.0345 0.0381 0.0417 0.0453 0.0489 0.0525 0.0561 0.0597 0.0633 0.0669 -14.1 
+
+Iteration 20| Distributions update | L = 7580.0452
+Iteration 20| Hyperparameter optimization | L = 7580.0452
+HP = 0.03 0.00719 0.01 -0.00152 0.00209 0.00569 0.00929 0.0129 0.0165 0.0201 0.0237 0.0273 0.0309 0.0345 0.0381 0.0417 0.0453 0.0489 0.0525 0.0561 0.0597 0.0633 0.0669 -14.1 
+
+Starting Variational Inference
+Initial Lower Bound L = -1e+08
+Iteration 1| Distributions update | L = 8052.5301
+Iteration 1| Hyperparameter optimization | L = 8052.7971
+HP = 0.03 0.00722 0.01 -0.00462 -0.000403 0.00381 0.00803 0.0122 0.0165 0.0207 0.0249 0.0291 0.0333 0.0375 0.0418 0.046 0.0502 0.0544 0.0586 0.0628 0.067 0.0713 0.0755 -14.1 
+
+Iteration 2| Distributions update | L = 9672.0911
+Iteration 2| Hyperparameter optimization | L = 9672.0911
+HP = 0.03 0.00722 0.01 -0.00462 -0.000403 0.00381 0.00803 0.0122 0.0165 0.0207 0.0249 0.0291 0.0333 0.0375 0.0418 0.046 0.0502 0.0544 0.0586 0.0628 0.067 0.0713 0.0755 -14.1 
+
+Iteration 3| Distributions update | L = 10209.33
+Iteration 3| Hyperparameter optimization | L = 10210.188
+HP = 0.0301 0.00722 0.01 -0.00462 -0.000403 0.00381 0.00803 0.0122 0.0165 0.0207 0.0249 0.0291 0.0333 0.0375 0.0418 0.046 0.0502 0.0544 0.0586 0.0628 0.067 0.0713 0.0755 -14.1 
+
+Iteration 4| Distributions update | L = 10551.723
+Iteration 4| Hyperparameter optimization | L = 10551.723
+HP = 0.0301 0.00722 0.01 -0.00462 -0.000403 0.00381 0.00803 0.0122 0.0165 0.0207 0.0249 0.0291 0.0333 0.0375 0.0418 0.046 0.0502 0.0544 0.0586 0.0628 0.067 0.0713 0.0755 -14.1 
+
+Iteration 5| Distributions update | L = 10727.803
+Iteration 5| Hyperparameter optimization | L = 10727.803
+HP = 0.0301 0.00722 0.01 -0.00462 -0.000403 0.00381 0.00803 0.0122 0.0165 0.0207 0.0249 0.0291 0.0333 0.0375 0.0418 0.046 0.0502 0.0544 0.0586 0.0628 0.067 0.0713 0.0755 -14.1 
+
+Iteration 6| Distributions update | L = 10972.419
+Iteration 6| Hyperparameter optimization | L = 10972.419
+HP = 0.0301 0.00722 0.01 -0.00462 -0.000403 0.00381 0.00803 0.0122 0.0165 0.0207 0.0249 0.0291 0.0333 0.0375 0.0418 0.046 0.0502 0.0544 0.0586 0.0628 0.067 0.0713 0.0755 -14.1 
+
+Iteration 7| Distributions update | L = 11133.222
+Iteration 7| Hyperparameter optimization | L = 11133.222
+HP = 0.0301 0.00722 0.01 -0.00462 -0.000403 0.00381 0.00803 0.0122 0.0165 0.0207 0.0249 0.0291 0.0333 0.0375 0.0418 0.046 0.0502 0.0544 0.0586 0.0628 0.067 0.0713 0.0755 -14.1 
+
+Iteration 8| Distributions update | L = 11247.24
+Iteration 8| Hyperparameter optimization | L = 11247.24
+HP = 0.0301 0.00722 0.01 -0.00462 -0.000403 0.00381 0.00803 0.0122 0.0165 0.0207 0.0249 0.0291 0.0333 0.0375 0.0418 0.046 0.0502 0.0544 0.0586 0.0628 0.067 0.0713 0.0755 -14.1 
+
+Iteration 9| Distributions update | L = 11344.708
+Iteration 9| Hyperparameter optimization | L = 11344.708
+HP = 0.0301 0.00722 0.01 -0.00462 -0.000403 0.00381 0.00803 0.0122 0.0165 0.0207 0.0249 0.0291 0.0333 0.0375 0.0418 0.046 0.0502 0.0544 0.0586 0.0628 0.067 0.0713 0.0755 -14.1 
+
+Iteration 10| Distributions update | L = 11486.342
+Iteration 10| Hyperparameter optimization | L = 11511.127
+HP = 0.0319 0.00742 0.01 -0.00462 -0.000403 0.00381 0.00803 0.0122 0.0165 0.0207 0.0249 0.0291 0.0333 0.0375 0.0418 0.046 0.0502 0.0544 0.0586 0.0628 0.067 0.0713 0.0755 -14.1 
+
+Iteration 11| Distributions update | L = 11715.945
+Iteration 11| Hyperparameter optimization | L = 11715.945
+HP = 0.0319 0.00742 0.01 -0.00462 -0.000403 0.00381 0.00803 0.0122 0.0165 0.0207 0.0249 0.0291 0.0333 0.0375 0.0418 0.046 0.0502 0.0544 0.0586 0.0628 0.067 0.0713 0.0755 -14.1 
+
+Iteration 12| Distributions update | L = 12778.902
+Iteration 12| Hyperparameter optimization | L = 12804.587
+HP = 0.0365 0.00775 0.01 -0.00462 -0.000403 0.00381 0.00803 0.0122 0.0165 0.0207 0.0249 0.0291 0.0333 0.0375 0.0417 0.046 0.0502 0.0544 0.0586 0.0628 0.067 0.0713 0.0755 -14.1 
+
+Iteration 13| Distributions update | L = 12940.764
+Iteration 13| Hyperparameter optimization | L = 13033.695
+HP = 0.0365 0.0101 0.01 -0.00462 -0.000405 0.00381 0.00802 0.0122 0.0165 0.0207 0.0249 0.0291 0.0333 0.0375 0.0417 0.046 0.0502 0.0544 0.0586 0.0628 0.067 0.0713 0.0755 -14.1 
+
+Iteration 14| Distributions update | L = 13122.268
+Iteration 14| Hyperparameter optimization | L = 13146.306
+HP = 0.0365 0.0111 0.00999 -0.00462 -0.000406 0.00381 0.00802 0.0122 0.0165 0.0207 0.0249 0.0291 0.0333 0.0375 0.0417 0.046 0.0502 0.0544 0.0586 0.0628 0.0671 0.0713 0.0755 -14.1 
+
+Iteration 15| Distributions update | L = 13203.535
+Iteration 15| Hyperparameter optimization | L = 13224.407
+HP = 0.0365 0.0121 0.00999 -0.00462 -0.000406 0.00381 0.00801 0.0122 0.0165 0.0207 0.0249 0.0291 0.0334 0.0375 0.0417 0.046 0.0502 0.0544 0.0586 0.0628 0.0671 0.0713 0.0755 -14.1 
+
+Iteration 16| Distributions update | L = 13362.296
+Iteration 16| Hyperparameter optimization | L = 13362.296
+HP = 0.0365 0.0121 0.00999 -0.00462 -0.000406 0.00381 0.00801 0.0122 0.0165 0.0207 0.0249 0.0291 0.0334 0.0375 0.0417 0.046 0.0502 0.0544 0.0586 0.0628 0.0671 0.0713 0.0755 -14.1 
+
+Iteration 17| Distributions update | L = 13471.861
+Iteration 17| Hyperparameter optimization | L = 13471.861
+HP = 0.0365 0.0121 0.00999 -0.00462 -0.000406 0.00381 0.00801 0.0122 0.0165 0.0207 0.0249 0.0291 0.0334 0.0375 0.0417 0.046 0.0502 0.0544 0.0586 0.0628 0.0671 0.0713 0.0755 -14.1 
+
+Iteration 18| Distributions update | L = 13480.257
+Iteration 18| Hyperparameter optimization | L = 13480.257
+HP = 0.0365 0.0121 0.00999 -0.00462 -0.000406 0.00381 0.00801 0.0122 0.0165 0.0207 0.0249 0.0291 0.0334 0.0375 0.0417 0.046 0.0502 0.0544 0.0586 0.0628 0.0671 0.0713 0.0755 -14.1 
+
+Iteration 19| Distributions update | L = 13522.635
+Iteration 19| Hyperparameter optimization | L = 13522.635
+HP = 0.0365 0.0121 0.00999 -0.00462 -0.000406 0.00381 0.00801 0.0122 0.0165 0.0207 0.0249 0.0291 0.0334 0.0375 0.0417 0.046 0.0502 0.0544 0.0586 0.0628 0.0671 0.0713 0.0755 -14.1 
+
+Iteration 20| Distributions update | L = 13541.008
+Iteration 20| Hyperparameter optimization | L = 13553.841
+HP = 0.0365 0.0131 0.00999 -0.00462 -0.000407 0.0038 0.00801 0.0122 0.0165 0.0207 0.0249 0.0291 0.0334 0.0375 0.0417 0.0459 0.0502 0.0544 0.0586 0.0628 0.0671 0.0713 0.0755 -14.1 
+
+Starting Variational Inference
+Initial Lower Bound L = -1.19e+08
+Iteration 1| Distributions update | L = 4618.9631
+Iteration 1| Hyperparameter optimization | L = 4618.9631
+HP = 0.0365 0.00723 0.00999 -0.0082 -0.00438 -0.000559 0.00326 0.00708 0.0109 0.0147 0.0185 0.0224 0.0262 0.03 0.0338 0.0377 0.0415 0.0453 0.0491 0.0529 0.0568 0.0606 0.0644 -14.1 
+
+Iteration 2| Distributions update | L = 8163.9194
+Iteration 2| Hyperparameter optimization | L = 8163.9194
+HP = 0.0365 0.00723 0.00999 -0.0082 -0.00438 -0.000559 0.00326 0.00708 0.0109 0.0147 0.0185 0.0224 0.0262 0.03 0.0338 0.0377 0.0415 0.0453 0.0491 0.0529 0.0568 0.0606 0.0644 -14.1 
+
+Iteration 3| Distributions update | L = 9118.1812
+Iteration 3| Hyperparameter optimization | L = 9121.4145
+HP = 0.0365 0.00723 0.00999 -0.0082 -0.00438 -0.000559 0.00326 0.00708 0.0109 0.0147 0.0185 0.0224 0.0262 0.03 0.0338 0.0377 0.0415 0.0453 0.0491 0.0529 0.0568 0.0606 0.0644 -14.1 
+
+Iteration 4| Distributions update | L = 9481.1542
+Iteration 4| Hyperparameter optimization | L = 9481.1542
+HP = 0.0365 0.00723 0.00999 -0.0082 -0.00438 -0.000559 0.00326 0.00708 0.0109 0.0147 0.0185 0.0224 0.0262 0.03 0.0338 0.0377 0.0415 0.0453 0.0491 0.0529 0.0568 0.0606 0.0644 -14.1 
+
+Iteration 5| Distributions update | L = 9805.2709
+Iteration 5| Hyperparameter optimization | L = 9805.2709
+HP = 0.0365 0.00723 0.00999 -0.0082 -0.00438 -0.000559 0.00326 0.00708 0.0109 0.0147 0.0185 0.0224 0.0262 0.03 0.0338 0.0377 0.0415 0.0453 0.0491 0.0529 0.0568 0.0606 0.0644 -14.1 
+
+Iteration 6| Distributions update | L = 9979.0683
+Iteration 6| Hyperparameter optimization | L = 9979.0683
+HP = 0.0365 0.00723 0.00999 -0.0082 -0.00438 -0.000559 0.00326 0.00708 0.0109 0.0147 0.0185 0.0224 0.0262 0.03 0.0338 0.0377 0.0415 0.0453 0.0491 0.0529 0.0568 0.0606 0.0644 -14.1 
+
+Iteration 7| Distributions update | L = 10201.427
+Iteration 7| Hyperparameter optimization | L = 10201.427
+HP = 0.0365 0.00723 0.00999 -0.0082 -0.00438 -0.000559 0.00326 0.00708 0.0109 0.0147 0.0185 0.0224 0.0262 0.03 0.0338 0.0377 0.0415 0.0453 0.0491 0.0529 0.0568 0.0606 0.0644 -14.1 
+
+Iteration 8| Distributions update | L = 10387.318
+Iteration 8| Hyperparameter optimization | L = 10387.732
+HP = 0.0365 0.00723 0.00999 -0.0082 -0.00438 -0.000559 0.00326 0.00708 0.0109 0.0147 0.0185 0.0224 0.0262 0.03 0.0338 0.0377 0.0415 0.0453 0.0491 0.0529 0.0568 0.0606 0.0644 -14.1 
+
+Iteration 9| Distributions update | L = 10584.256
+Iteration 9| Hyperparameter optimization | L = 10584.256
+HP = 0.0365 0.00723 0.00999 -0.0082 -0.00438 -0.000559 0.00326 0.00708 0.0109 0.0147 0.0185 0.0224 0.0262 0.03 0.0338 0.0377 0.0415 0.0453 0.0491 0.0529 0.0568 0.0606 0.0644 -14.1 
+
+Iteration 10| Distributions update | L = 10691.621
+Iteration 10| Hyperparameter optimization | L = 10691.621
+HP = 0.0365 0.00723 0.00999 -0.0082 -0.00438 -0.000559 0.00326 0.00708 0.0109 0.0147 0.0185 0.0224 0.0262 0.03 0.0338 0.0377 0.0415 0.0453 0.0491 0.0529 0.0568 0.0606 0.0644 -14.1 
+
+Iteration 11| Distributions update | L = 10919.836
+Iteration 11| Hyperparameter optimization | L = 10919.836
+HP = 0.0365 0.00723 0.00999 -0.0082 -0.00438 -0.000559 0.00326 0.00708 0.0109 0.0147 0.0185 0.0224 0.0262 0.03 0.0338 0.0377 0.0415 0.0453 0.0491 0.0529 0.0568 0.0606 0.0644 -14.1 
+
+Iteration 12| Distributions update | L = 11177.432
+Iteration 12| Hyperparameter optimization | L = 11177.432
+HP = 0.0365 0.00723 0.00999 -0.0082 -0.00438 -0.000559 0.00326 0.00708 0.0109 0.0147 0.0185 0.0224 0.0262 0.03 0.0338 0.0377 0.0415 0.0453 0.0491 0.0529 0.0568 0.0606 0.0644 -14.1 
+
+Iteration 13| Distributions update | L = 11830.87
+Iteration 13| Hyperparameter optimization | L = 11830.87
+HP = 0.0365 0.00723 0.00999 -0.0082 -0.00438 -0.000559 0.00326 0.00708 0.0109 0.0147 0.0185 0.0224 0.0262 0.03 0.0338 0.0377 0.0415 0.0453 0.0491 0.0529 0.0568 0.0606 0.0644 -14.1 
+
+Iteration 14| Distributions update | L = 12295.296
+Iteration 14| Hyperparameter optimization | L = 12295.423
+HP = 0.0365 0.00723 0.00999 -0.0082 -0.00438 -0.000559 0.00326 0.00708 0.0109 0.0147 0.0185 0.0224 0.0262 0.03 0.0338 0.0377 0.0415 0.0453 0.0491 0.0529 0.0568 0.0606 0.0644 -14.1 
+
+Iteration 15| Distributions update | L = 12327.778
+Iteration 15| Hyperparameter optimization | L = 12327.778
+HP = 0.0365 0.00723 0.00999 -0.0082 -0.00438 -0.000559 0.00326 0.00708 0.0109 0.0147 0.0185 0.0224 0.0262 0.03 0.0338 0.0377 0.0415 0.0453 0.0491 0.0529 0.0568 0.0606 0.0644 -14.1 
+
+Iteration 16| Distributions update | L = 12442.668
+Iteration 16| Hyperparameter optimization | L = 12442.668
+HP = 0.0365 0.00723 0.00999 -0.0082 -0.00438 -0.000559 0.00326 0.00708 0.0109 0.0147 0.0185 0.0224 0.0262 0.03 0.0338 0.0377 0.0415 0.0453 0.0491 0.0529 0.0568 0.0606 0.0644 -14.1 
+
+Iteration 17| Distributions update | L = 12489.805
+Iteration 17| Hyperparameter optimization | L = 12489.805
+HP = 0.0365 0.00723 0.00999 -0.0082 -0.00438 -0.000559 0.00326 0.00708 0.0109 0.0147 0.0185 0.0224 0.0262 0.03 0.0338 0.0377 0.0415 0.0453 0.0491 0.0529 0.0568 0.0606 0.0644 -14.1 
+
+Iteration 18| Distributions update | L = 12628.761
+Iteration 18| Hyperparameter optimization | L = 12628.761
+HP = 0.0365 0.00723 0.00999 -0.0082 -0.00438 -0.000559 0.00326 0.00708 0.0109 0.0147 0.0185 0.0224 0.0262 0.03 0.0338 0.0377 0.0415 0.0453 0.0491 0.0529 0.0568 0.0606 0.0644 -14.1 
+
+Iteration 19| Distributions update | L = 14509.586
+Iteration 19| Hyperparameter optimization | L = 14509.586
+HP = 0.0365 0.00723 0.00999 -0.0082 -0.00438 -0.000559 0.00326 0.00708 0.0109 0.0147 0.0185 0.0224 0.0262 0.03 0.0338 0.0377 0.0415 0.0453 0.0491 0.0529 0.0568 0.0606 0.0644 -14.1 
+
+Iteration 20| Distributions update | L = 15235.747
+Iteration 20| Hyperparameter optimization | L = 15235.747
+HP = 0.0365 0.00723 0.00999 -0.0082 -0.00438 -0.000559 0.00326 0.00708 0.0109 0.0147 0.0185 0.0224 0.0262 0.03 0.0338 0.0377 0.0415 0.0453 0.0491 0.0529 0.0568 0.0606 0.0644 -14.1 
+
+Starting Variational Inference
+Initial Lower Bound L = -9.14e+07
+Iteration 1| Distributions update | L = 5290.8524
+Iteration 1| Hyperparameter optimization | L = 5301.6922
+HP = 0.0365 0.00714 0.00999 -0.0089 -0.00602 -0.00315 -0.000274 0.0026 0.00548 0.00835 0.0112 0.0141 0.017 0.0199 0.0227 0.0256 0.0285 0.0314 0.0342 0.0371 0.04 0.0429 0.0457 -14 
+
+Iteration 2| Distributions update | L = 6317.0946
+Iteration 2| Hyperparameter optimization | L = 6317.0946
+HP = 0.0365 0.00714 0.00999 -0.0089 -0.00602 -0.00315 -0.000274 0.0026 0.00548 0.00835 0.0112 0.0141 0.017 0.0199 0.0227 0.0256 0.0285 0.0314 0.0342 0.0371 0.04 0.0429 0.0457 -14 
+
+Iteration 3| Distributions update | L = 6494.624
+Iteration 3| Hyperparameter optimization | L = 6494.624
+HP = 0.0365 0.00714 0.00999 -0.0089 -0.00602 -0.00315 -0.000274 0.0026 0.00548 0.00835 0.0112 0.0141 0.017 0.0199 0.0227 0.0256 0.0285 0.0314 0.0342 0.0371 0.04 0.0429 0.0457 -14 
+
+Iteration 4| Distributions update | L = 7564.8842
+Iteration 4| Hyperparameter optimization | L = 7564.8842
+HP = 0.0365 0.00714 0.00999 -0.0089 -0.00602 -0.00315 -0.000274 0.0026 0.00548 0.00835 0.0112 0.0141 0.017 0.0199 0.0227 0.0256 0.0285 0.0314 0.0342 0.0371 0.04 0.0429 0.0457 -14 
+
+Iteration 5| Distributions update | L = 8000.1347
+Iteration 5| Hyperparameter optimization | L = 8001.885
+HP = 0.0365 0.00714 0.00999 -0.0089 -0.00602 -0.00315 -0.000274 0.0026 0.00548 0.00835 0.0112 0.0141 0.017 0.0199 0.0227 0.0256 0.0285 0.0314 0.0342 0.0371 0.04 0.0429 0.0457 -14 
+
+Iteration 6| Distributions update | L = 8130.6392
+Iteration 6| Hyperparameter optimization | L = 8130.6392
+HP = 0.0365 0.00714 0.00999 -0.0089 -0.00602 -0.00315 -0.000274 0.0026 0.00548 0.00835 0.0112 0.0141 0.017 0.0199 0.0227 0.0256 0.0285 0.0314 0.0342 0.0371 0.04 0.0429 0.0457 -14 
+
+Iteration 7| Distributions update | L = 8210.8525
+Iteration 7| Hyperparameter optimization | L = 8210.8525
+HP = 0.0365 0.00714 0.00999 -0.0089 -0.00602 -0.00315 -0.000274 0.0026 0.00548 0.00835 0.0112 0.0141 0.017 0.0199 0.0227 0.0256 0.0285 0.0314 0.0342 0.0371 0.04 0.0429 0.0457 -14 
+
+Iteration 8| Distributions update | L = 8246.5373
+Iteration 8| Hyperparameter optimization | L = 8248.9039
+HP = 0.0365 0.00714 0.00999 -0.0089 -0.00602 -0.00315 -0.000274 0.0026 0.00548 0.00835 0.0112 0.0141 0.017 0.0199 0.0227 0.0256 0.0285 0.0314 0.0342 0.0371 0.04 0.0429 0.0457 -14 
+
+Iteration 9| Distributions update | L = 9704.7161
+Iteration 9| Hyperparameter optimization | L = 9704.7161
+HP = 0.0365 0.00714 0.00999 -0.0089 -0.00602 -0.00315 -0.000274 0.0026 0.00548 0.00835 0.0112 0.0141 0.017 0.0199 0.0227 0.0256 0.0285 0.0314 0.0342 0.0371 0.04 0.0429 0.0457 -14 
+
+Iteration 10| Distributions update | L = 9929.0306
+Iteration 10| Hyperparameter optimization | L = 9929.0306
+HP = 0.0365 0.00714 0.00999 -0.0089 -0.00602 -0.00315 -0.000274 0.0026 0.00548 0.00835 0.0112 0.0141 0.017 0.0199 0.0227 0.0256 0.0285 0.0314 0.0342 0.0371 0.04 0.0429 0.0457 -14 
+
+Iteration 11| Distributions update | L = 10035.823
+Iteration 11| Hyperparameter optimization | L = 10035.823
+HP = 0.0365 0.00714 0.00999 -0.0089 -0.00602 -0.00315 -0.000274 0.0026 0.00548 0.00835 0.0112 0.0141 0.017 0.0199 0.0227 0.0256 0.0285 0.0314 0.0342 0.0371 0.04 0.0429 0.0457 -14 
+
+Iteration 12| Distributions update | L = 10108.475
+Iteration 12| Hyperparameter optimization | L = 10108.475
+HP = 0.0365 0.00714 0.00999 -0.0089 -0.00602 -0.00315 -0.000274 0.0026 0.00548 0.00835 0.0112 0.0141 0.017 0.0199 0.0227 0.0256 0.0285 0.0314 0.0342 0.0371 0.04 0.0429 0.0457 -14 
+
+Iteration 13| Distributions update | L = 10259.092
+Iteration 13| Hyperparameter optimization | L = 10259.092
+HP = 0.0365 0.00714 0.00999 -0.0089 -0.00602 -0.00315 -0.000274 0.0026 0.00548 0.00835 0.0112 0.0141 0.017 0.0199 0.0227 0.0256 0.0285 0.0314 0.0342 0.0371 0.04 0.0429 0.0457 -14 
+
+Iteration 14| Distributions update | L = 10319.905
+Iteration 14| Hyperparameter optimization | L = 10319.905
+HP = 0.0365 0.00714 0.00999 -0.0089 -0.00602 -0.00315 -0.000274 0.0026 0.00548 0.00835 0.0112 0.0141 0.017 0.0199 0.0227 0.0256 0.0285 0.0314 0.0342 0.0371 0.04 0.0429 0.0457 -14 
+
+Iteration 15| Distributions update | L = 10417.135
+Iteration 15| Hyperparameter optimization | L = 10417.135
+HP = 0.0365 0.00714 0.00999 -0.0089 -0.00602 -0.00315 -0.000274 0.0026 0.00548 0.00835 0.0112 0.0141 0.017 0.0199 0.0227 0.0256 0.0285 0.0314 0.0342 0.0371 0.04 0.0429 0.0457 -14 
+
+Iteration 16| Distributions update | L = 10476.654
+Iteration 16| Hyperparameter optimization | L = 10476.654
+HP = 0.0365 0.00714 0.00999 -0.0089 -0.00602 -0.00315 -0.000274 0.0026 0.00548 0.00835 0.0112 0.0141 0.017 0.0199 0.0227 0.0256 0.0285 0.0314 0.0342 0.0371 0.04 0.0429 0.0457 -14 
+
+Iteration 17| Distributions update | L = 10608.548
+Iteration 17| Hyperparameter optimization | L = 10608.548
+HP = 0.0365 0.00714 0.00999 -0.0089 -0.00602 -0.00315 -0.000274 0.0026 0.00548 0.00835 0.0112 0.0141 0.017 0.0199 0.0227 0.0256 0.0285 0.0314 0.0342 0.0371 0.04 0.0429 0.0457 -14 
+
+Iteration 18| Distributions update | L = 10758.879
+Iteration 18| Hyperparameter optimization | L = 10758.879
+HP = 0.0365 0.00714 0.00999 -0.0089 -0.00602 -0.00315 -0.000274 0.0026 0.00548 0.00835 0.0112 0.0141 0.017 0.0199 0.0227 0.0256 0.0285 0.0314 0.0342 0.0371 0.04 0.0429 0.0457 -14 
+
+Iteration 19| Distributions update | L = 10791.141
+Iteration 19| Hyperparameter optimization | L = 10791.141
+HP = 0.0365 0.00714 0.00999 -0.0089 -0.00602 -0.00315 -0.000274 0.0026 0.00548 0.00835 0.0112 0.0141 0.017 0.0199 0.0227 0.0256 0.0285 0.0314 0.0342 0.0371 0.04 0.0429 0.0457 -14 
+
+Iteration 20| Distributions update | L = 10873.826
+Iteration 20| Hyperparameter optimization | L = 10873.826
+HP = 0.0365 0.00714 0.00999 -0.0089 -0.00602 -0.00315 -0.000274 0.0026 0.00548 0.00835 0.0112 0.0141 0.017 0.0199 0.0227 0.0256 0.0285 0.0314 0.0342 0.0371 0.04 0.0429 0.0457 -14 
+
+Starting Variational Inference
+Initial Lower Bound L = -1.2e+08
+Iteration 1| Distributions update | L = 8947.7199
+Iteration 1| Hyperparameter optimization | L = 8953.7919
+HP = 0.0365 0.00725 0.00999 -0.0141 -0.0113 -0.00843 -0.00559 -0.00275 9.32e-05 0.00293 0.00577 0.00861 0.0115 0.0143 0.0171 0.02 0.0228 0.0257 0.0285 0.0313 0.0342 0.037 0.0398 -14.2 
+
+Iteration 2| Distributions update | L = 9588.4895
+Iteration 2| Hyperparameter optimization | L = 9588.4895
+HP = 0.0365 0.00725 0.00999 -0.0141 -0.0113 -0.00843 -0.00559 -0.00275 9.32e-05 0.00293 0.00577 0.00861 0.0115 0.0143 0.0171 0.02 0.0228 0.0257 0.0285 0.0313 0.0342 0.037 0.0398 -14.2 
+
+Iteration 3| Distributions update | L = 9797.128
+Iteration 3| Hyperparameter optimization | L = 9797.128
+HP = 0.0365 0.00725 0.00999 -0.0141 -0.0113 -0.00843 -0.00559 -0.00275 9.32e-05 0.00293 0.00577 0.00861 0.0115 0.0143 0.0171 0.02 0.0228 0.0257 0.0285 0.0313 0.0342 0.037 0.0398 -14.2 
+
+Iteration 4| Distributions update | L = 10354.827
+Iteration 4| Hyperparameter optimization | L = 10354.827
+HP = 0.0365 0.00725 0.00999 -0.0141 -0.0113 -0.00843 -0.00559 -0.00275 9.32e-05 0.00293 0.00577 0.00861 0.0115 0.0143 0.0171 0.02 0.0228 0.0257 0.0285 0.0313 0.0342 0.037 0.0398 -14.2 
+
+Iteration 5| Distributions update | L = 10625.137
+Iteration 5| Hyperparameter optimization | L = 10625.137
+HP = 0.0365 0.00725 0.00999 -0.0141 -0.0113 -0.00843 -0.00559 -0.00275 9.32e-05 0.00293 0.00577 0.00861 0.0115 0.0143 0.0171 0.02 0.0228 0.0257 0.0285 0.0313 0.0342 0.037 0.0398 -14.2 
+
+Iteration 6| Distributions update | L = 10759.485
+Iteration 6| Hyperparameter optimization | L = 10759.485
+HP = 0.0365 0.00725 0.00999 -0.0141 -0.0113 -0.00843 -0.00559 -0.00275 9.32e-05 0.00293 0.00577 0.00861 0.0115 0.0143 0.0171 0.02 0.0228 0.0257 0.0285 0.0313 0.0342 0.037 0.0398 -14.2 
+
+Iteration 7| Distributions update | L = 10830.386
+Iteration 7| Hyperparameter optimization | L = 10830.386
+HP = 0.0365 0.00725 0.00999 -0.0141 -0.0113 -0.00843 -0.00559 -0.00275 9.32e-05 0.00293 0.00577 0.00861 0.0115 0.0143 0.0171 0.02 0.0228 0.0257 0.0285 0.0313 0.0342 0.037 0.0398 -14.2 
+
+Iteration 8| Distributions update | L = 10968.16
+Iteration 8| Hyperparameter optimization | L = 10968.16
+HP = 0.0365 0.00725 0.00999 -0.0141 -0.0113 -0.00843 -0.00559 -0.00275 9.32e-05 0.00293 0.00577 0.00861 0.0115 0.0143 0.0171 0.02 0.0228 0.0257 0.0285 0.0313 0.0342 0.037 0.0398 -14.2 
+
+Iteration 9| Distributions update | L = 11309.24
+Iteration 9| Hyperparameter optimization | L = 11309.24
+HP = 0.0365 0.00725 0.00999 -0.0141 -0.0113 -0.00843 -0.00559 -0.00275 9.32e-05 0.00293 0.00577 0.00861 0.0115 0.0143 0.0171 0.02 0.0228 0.0257 0.0285 0.0313 0.0342 0.037 0.0398 -14.2 
+
+Iteration 10| Distributions update | L = 12282.057
+Iteration 10| Hyperparameter optimization | L = 12282.057
+HP = 0.0365 0.00725 0.00999 -0.0141 -0.0113 -0.00843 -0.00559 -0.00275 9.32e-05 0.00293 0.00577 0.00861 0.0115 0.0143 0.0171 0.02 0.0228 0.0257 0.0285 0.0313 0.0342 0.037 0.0398 -14.2 
+
+Iteration 11| Distributions update | L = 12322.295
+Iteration 11| Hyperparameter optimization | L = 12322.295
+HP = 0.0365 0.00725 0.00999 -0.0141 -0.0113 -0.00843 -0.00559 -0.00275 9.32e-05 0.00293 0.00577 0.00861 0.0115 0.0143 0.0171 0.02 0.0228 0.0257 0.0285 0.0313 0.0342 0.037 0.0398 -14.2 
+
+Iteration 12| Distributions update | L = 12886.864
+Iteration 12| Hyperparameter optimization | L = 12886.864
+HP = 0.0365 0.00725 0.00999 -0.0141 -0.0113 -0.00843 -0.00559 -0.00275 9.32e-05 0.00293 0.00577 0.00861 0.0115 0.0143 0.0171 0.02 0.0228 0.0257 0.0285 0.0313 0.0342 0.037 0.0398 -14.2 
+
+Iteration 13| Distributions update | L = 12927.782
+Iteration 13| Hyperparameter optimization | L = 12927.782
+HP = 0.0365 0.00725 0.00999 -0.0141 -0.0113 -0.00843 -0.00559 -0.00275 9.32e-05 0.00293 0.00577 0.00861 0.0115 0.0143 0.0171 0.02 0.0228 0.0257 0.0285 0.0313 0.0342 0.037 0.0398 -14.2 
+
+Iteration 14| Distributions update | L = 13231.368
+Iteration 14| Hyperparameter optimization | L = 13231.368
+HP = 0.0365 0.00725 0.00999 -0.0141 -0.0113 -0.00843 -0.00559 -0.00275 9.32e-05 0.00293 0.00577 0.00861 0.0115 0.0143 0.0171 0.02 0.0228 0.0257 0.0285 0.0313 0.0342 0.037 0.0398 -14.2 
+
+Iteration 15| Distributions update | L = 13342.969
+Iteration 15| Hyperparameter optimization | L = 13342.969
+HP = 0.0365 0.00725 0.00999 -0.0141 -0.0113 -0.00843 -0.00559 -0.00275 9.32e-05 0.00293 0.00577 0.00861 0.0115 0.0143 0.0171 0.02 0.0228 0.0257 0.0285 0.0313 0.0342 0.037 0.0398 -14.2 
+
+Iteration 16| Distributions update | L = 13394.416
+Iteration 16| Hyperparameter optimization | L = 13394.416
+HP = 0.0365 0.00725 0.00999 -0.0141 -0.0113 -0.00843 -0.00559 -0.00275 9.32e-05 0.00293 0.00577 0.00861 0.0115 0.0143 0.0171 0.02 0.0228 0.0257 0.0285 0.0313 0.0342 0.037 0.0398 -14.2 
+
+Iteration 17| Distributions update | L = 13666.736
+Iteration 17| Hyperparameter optimization | L = 13667.46
+HP = 0.0365 0.00725 0.00999 -0.0141 -0.0113 -0.00843 -0.00559 -0.00275 9.32e-05 0.00293 0.00577 0.00861 0.0115 0.0143 0.0171 0.02 0.0228 0.0257 0.0285 0.0313 0.0342 0.037 0.0398 -14.2 
+
+Iteration 18| Distributions update | L = 13782.527
+Iteration 18| Hyperparameter optimization | L = 13782.527
+HP = 0.0365 0.00725 0.00999 -0.0141 -0.0113 -0.00843 -0.00559 -0.00275 9.32e-05 0.00293 0.00577 0.00861 0.0115 0.0143 0.0171 0.02 0.0228 0.0257 0.0285 0.0313 0.0342 0.037 0.0398 -14.2 
+
+Iteration 19| Distributions update | L = 13820.856
+Iteration 19| Hyperparameter optimization | L = 13820.856
+HP = 0.0365 0.00725 0.00999 -0.0141 -0.0113 -0.00843 -0.00559 -0.00275 9.32e-05 0.00293 0.00577 0.00861 0.0115 0.0143 0.0171 0.02 0.0228 0.0257 0.0285 0.0313 0.0342 0.037 0.0398 -14.2 
+
+Iteration 20| Distributions update | L = 13936.637
+Iteration 20| Hyperparameter optimization | L = 13936.637
+HP = 0.0365 0.00725 0.00999 -0.0141 -0.0113 -0.00843 -0.00559 -0.00275 9.32e-05 0.00293 0.00577 0.00861 0.0115 0.0143 0.0171 0.02 0.0228 0.0257 0.0285 0.0313 0.0342 0.037 0.0398 -14.2 
+
+Starting Variational Inference
+Initial Lower Bound L = -1.42e+08
+Iteration 1| Distributions update | L = 3186.4687
+Iteration 1| Hyperparameter optimization | L = 3189.6547
+HP = 0.0365 0.00742 0.00999 -0.0117 -0.00907 -0.00648 -0.00389 -0.0013 0.00129 0.00389 0.00648 0.00907 0.0117 0.0143 0.0168 0.0194 0.022 0.0246 0.0272 0.0298 0.0324 0.035 0.0376 -14.3 
+
+Iteration 2| Distributions update | L = 4662.8946
+Iteration 2| Hyperparameter optimization | L = 4662.8946
+HP = 0.0365 0.00742 0.00999 -0.0117 -0.00907 -0.00648 -0.00389 -0.0013 0.00129 0.00389 0.00648 0.00907 0.0117 0.0143 0.0168 0.0194 0.022 0.0246 0.0272 0.0298 0.0324 0.035 0.0376 -14.3 
+
+Iteration 3| Distributions update | L = 5044.0661
+Iteration 3| Hyperparameter optimization | L = 5046.9438
+HP = 0.0365 0.00742 0.00999 -0.0117 -0.00907 -0.00648 -0.00389 -0.0013 0.00129 0.00389 0.00648 0.00907 0.0117 0.0143 0.0168 0.0194 0.022 0.0246 0.0272 0.0298 0.0324 0.035 0.0376 -14.3 
+
+Iteration 4| Distributions update | L = 5587.9725
+Iteration 4| Hyperparameter optimization | L = 5587.9725
+HP = 0.0365 0.00742 0.00999 -0.0117 -0.00907 -0.00648 -0.00389 -0.0013 0.00129 0.00389 0.00648 0.00907 0.0117 0.0143 0.0168 0.0194 0.022 0.0246 0.0272 0.0298 0.0324 0.035 0.0376 -14.3 
+
+Iteration 5| Distributions update | L = 5842.6883
+Iteration 5| Hyperparameter optimization | L = 5844.8246
+HP = 0.0365 0.00742 0.00999 -0.0117 -0.00907 -0.00648 -0.00389 -0.0013 0.00129 0.00389 0.00648 0.00907 0.0117 0.0143 0.0168 0.0194 0.022 0.0246 0.0272 0.0298 0.0324 0.035 0.0376 -14.3 
+
+Iteration 6| Distributions update | L = 6109.1664
+Iteration 6| Hyperparameter optimization | L = 6109.1664
+HP = 0.0365 0.00742 0.00999 -0.0117 -0.00907 -0.00648 -0.00389 -0.0013 0.00129 0.00389 0.00648 0.00907 0.0117 0.0143 0.0168 0.0194 0.022 0.0246 0.0272 0.0298 0.0324 0.035 0.0376 -14.3 
+
+Iteration 7| Distributions update | L = 7877.3317
+Iteration 7| Hyperparameter optimization | L = 7877.3317
+HP = 0.0365 0.00742 0.00999 -0.0117 -0.00907 -0.00648 -0.00389 -0.0013 0.00129 0.00389 0.00648 0.00907 0.0117 0.0143 0.0168 0.0194 0.022 0.0246 0.0272 0.0298 0.0324 0.035 0.0376 -14.3 
+
+Iteration 8| Distributions update | L = 8252.9297
+Iteration 8| Hyperparameter optimization | L = 8252.9297
+HP = 0.0365 0.00742 0.00999 -0.0117 -0.00907 -0.00648 -0.00389 -0.0013 0.00129 0.00389 0.00648 0.00907 0.0117 0.0143 0.0168 0.0194 0.022 0.0246 0.0272 0.0298 0.0324 0.035 0.0376 -14.3 
+
+Iteration 9| Distributions update | L = 8443.9285
+Iteration 9| Hyperparameter optimization | L = 8443.9285
+HP = 0.0365 0.00742 0.00999 -0.0117 -0.00907 -0.00648 -0.00389 -0.0013 0.00129 0.00389 0.00648 0.00907 0.0117 0.0143 0.0168 0.0194 0.022 0.0246 0.0272 0.0298 0.0324 0.035 0.0376 -14.3 
+
+Iteration 10| Distributions update | L = 8767.9647
+Iteration 10| Hyperparameter optimization | L = 8767.9647
+HP = 0.0365 0.00742 0.00999 -0.0117 -0.00907 -0.00648 -0.00389 -0.0013 0.00129 0.00389 0.00648 0.00907 0.0117 0.0143 0.0168 0.0194 0.022 0.0246 0.0272 0.0298 0.0324 0.035 0.0376 -14.3 
+
+Iteration 11| Distributions update | L = 8872.9409
+Iteration 11| Hyperparameter optimization | L = 8872.9409
+HP = 0.0365 0.00742 0.00999 -0.0117 -0.00907 -0.00648 -0.00389 -0.0013 0.00129 0.00389 0.00648 0.00907 0.0117 0.0143 0.0168 0.0194 0.022 0.0246 0.0272 0.0298 0.0324 0.035 0.0376 -14.3 
+
+Iteration 12| Distributions update | L = 8913.111
+Iteration 12| Hyperparameter optimization | L = 8913.111
+HP = 0.0365 0.00742 0.00999 -0.0117 -0.00907 -0.00648 -0.00389 -0.0013 0.00129 0.00389 0.00648 0.00907 0.0117 0.0143 0.0168 0.0194 0.022 0.0246 0.0272 0.0298 0.0324 0.035 0.0376 -14.3 
+
+Iteration 13| Distributions update | L = 9865.5336
+Iteration 13| Hyperparameter optimization | L = 9865.5336
+HP = 0.0365 0.00742 0.00999 -0.0117 -0.00907 -0.00648 -0.00389 -0.0013 0.00129 0.00389 0.00648 0.00907 0.0117 0.0143 0.0168 0.0194 0.022 0.0246 0.0272 0.0298 0.0324 0.035 0.0376 -14.3 
+
+Iteration 14| Distributions update | L = 10271.816
+Iteration 14| Hyperparameter optimization | L = 10271.816
+HP = 0.0365 0.00742 0.00999 -0.0117 -0.00907 -0.00648 -0.00389 -0.0013 0.00129 0.00389 0.00648 0.00907 0.0117 0.0143 0.0168 0.0194 0.022 0.0246 0.0272 0.0298 0.0324 0.035 0.0376 -14.3 
+
+Iteration 15| Distributions update | L = 10465.889
+Iteration 15| Hyperparameter optimization | L = 10465.889
+HP = 0.0365 0.00742 0.00999 -0.0117 -0.00907 -0.00648 -0.00389 -0.0013 0.00129 0.00389 0.00648 0.00907 0.0117 0.0143 0.0168 0.0194 0.022 0.0246 0.0272 0.0298 0.0324 0.035 0.0376 -14.3 
+
+Iteration 16| Distributions update | L = 10610.849
+Iteration 16| Hyperparameter optimization | L = 10610.849
+HP = 0.0365 0.00742 0.00999 -0.0117 -0.00907 -0.00648 -0.00389 -0.0013 0.00129 0.00389 0.00648 0.00907 0.0117 0.0143 0.0168 0.0194 0.022 0.0246 0.0272 0.0298 0.0324 0.035 0.0376 -14.3 
+
+Iteration 17| Distributions update | L = 10708.601
+Iteration 17| Hyperparameter optimization | L = 10708.601
+HP = 0.0365 0.00742 0.00999 -0.0117 -0.00907 -0.00648 -0.00389 -0.0013 0.00129 0.00389 0.00648 0.00907 0.0117 0.0143 0.0168 0.0194 0.022 0.0246 0.0272 0.0298 0.0324 0.035 0.0376 -14.3 
+
+Iteration 18| Distributions update | L = 10764.38
+Iteration 18| Hyperparameter optimization | L = 10764.38
+HP = 0.0365 0.00742 0.00999 -0.0117 -0.00907 -0.00648 -0.00389 -0.0013 0.00129 0.00389 0.00648 0.00907 0.0117 0.0143 0.0168 0.0194 0.022 0.0246 0.0272 0.0298 0.0324 0.035 0.0376 -14.3 
+
+Iteration 19| Distributions update | L = 10831.062
+Iteration 19| Hyperparameter optimization | L = 10831.062
+HP = 0.0365 0.00742 0.00999 -0.0117 -0.00907 -0.00648 -0.00389 -0.0013 0.00129 0.00389 0.00648 0.00907 0.0117 0.0143 0.0168 0.0194 0.022 0.0246 0.0272 0.0298 0.0324 0.035 0.0376 -14.3 
+
+Iteration 20| Distributions update | L = 11030.189
+Iteration 20| Hyperparameter optimization | L = 11030.189
+HP = 0.0365 0.00742 0.00999 -0.0117 -0.00907 -0.00648 -0.00389 -0.0013 0.00129 0.00389 0.00648 0.00907 0.0117 0.0143 0.0168 0.0194 0.022 0.0246 0.0272 0.0298 0.0324 0.035 0.0376 -14.3 
+
+Starting Variational Inference
+Initial Lower Bound L = -1.12e+08
+Iteration 1| Distributions update | L = 2587.5053
+Iteration 1| Hyperparameter optimization | L = 2597.9811
+HP = 0.0365 0.00738 0.00999 -0.0101 -0.00809 -0.00603 -0.00398 -0.00192 0.000133 0.00219 0.00424 0.0063 0.00835 0.0104 0.0125 0.0145 0.0166 0.0186 0.0207 0.0227 0.0248 0.0269 0.0289 -14.3 
+
+Iteration 2| Distributions update | L = 3007.1487
+Iteration 2| Hyperparameter optimization | L = 3007.1487
+HP = 0.0365 0.00738 0.00999 -0.0101 -0.00809 -0.00603 -0.00398 -0.00192 0.000133 0.00219 0.00424 0.0063 0.00835 0.0104 0.0125 0.0145 0.0166 0.0186 0.0207 0.0227 0.0248 0.0269 0.0289 -14.3 
+
+Iteration 3| Distributions update | L = 3501.2354
+Iteration 3| Hyperparameter optimization | L = 3502.1713
+HP = 0.0365 0.00738 0.00999 -0.0101 -0.00809 -0.00603 -0.00398 -0.00192 0.000133 0.00219 0.00424 0.0063 0.00835 0.0104 0.0125 0.0145 0.0166 0.0186 0.0207 0.0227 0.0248 0.0269 0.0289 -14.3 
+
+Iteration 4| Distributions update | L = 3661.8554
+Iteration 4| Hyperparameter optimization | L = 3661.8554
+HP = 0.0365 0.00738 0.00999 -0.0101 -0.00809 -0.00603 -0.00398 -0.00192 0.000133 0.00219 0.00424 0.0063 0.00835 0.0104 0.0125 0.0145 0.0166 0.0186 0.0207 0.0227 0.0248 0.0269 0.0289 -14.3 
+
+Iteration 5| Distributions update | L = 3951.7125
+Iteration 5| Hyperparameter optimization | L = 3951.7125
+HP = 0.0365 0.00738 0.00999 -0.0101 -0.00809 -0.00603 -0.00398 -0.00192 0.000133 0.00219 0.00424 0.0063 0.00835 0.0104 0.0125 0.0145 0.0166 0.0186 0.0207 0.0227 0.0248 0.0269 0.0289 -14.3 
+
+Iteration 6| Distributions update | L = 4331.3032
+Iteration 6| Hyperparameter optimization | L = 4331.3032
+HP = 0.0365 0.00738 0.00999 -0.0101 -0.00809 -0.00603 -0.00398 -0.00192 0.000133 0.00219 0.00424 0.0063 0.00835 0.0104 0.0125 0.0145 0.0166 0.0186 0.0207 0.0227 0.0248 0.0269 0.0289 -14.3 
+
+Iteration 7| Distributions update | L = 4685.9733
+Iteration 7| Hyperparameter optimization | L = 4685.9733
+HP = 0.0365 0.00738 0.00999 -0.0101 -0.00809 -0.00603 -0.00398 -0.00192 0.000133 0.00219 0.00424 0.0063 0.00835 0.0104 0.0125 0.0145 0.0166 0.0186 0.0207 0.0227 0.0248 0.0269 0.0289 -14.3 
+
+Iteration 8| Distributions update | L = 5101.5771
+Iteration 8| Hyperparameter optimization | L = 5103.873
+HP = 0.0365 0.00738 0.00999 -0.0101 -0.00809 -0.00603 -0.00398 -0.00192 0.000133 0.00219 0.00424 0.0063 0.00835 0.0104 0.0125 0.0145 0.0166 0.0186 0.0207 0.0227 0.0248 0.0269 0.0289 -14.3 
+
+Iteration 9| Distributions update | L = 5203.0492
+Iteration 9| Hyperparameter optimization | L = 5203.0492
+HP = 0.0365 0.00738 0.00999 -0.0101 -0.00809 -0.00603 -0.00398 -0.00192 0.000133 0.00219 0.00424 0.0063 0.00835 0.0104 0.0125 0.0145 0.0166 0.0186 0.0207 0.0227 0.0248 0.0269 0.0289 -14.3 
+
+Iteration 10| Distributions update | L = 5414.7739
+Iteration 10| Hyperparameter optimization | L = 5414.7739
+HP = 0.0365 0.00738 0.00999 -0.0101 -0.00809 -0.00603 -0.00398 -0.00192 0.000133 0.00219 0.00424 0.0063 0.00835 0.0104 0.0125 0.0145 0.0166 0.0186 0.0207 0.0227 0.0248 0.0269 0.0289 -14.3 
+
+Iteration 11| Distributions update | L = 5639.4638
+Iteration 11| Hyperparameter optimization | L = 5639.4638
+HP = 0.0365 0.00738 0.00999 -0.0101 -0.00809 -0.00603 -0.00398 -0.00192 0.000133 0.00219 0.00424 0.0063 0.00835 0.0104 0.0125 0.0145 0.0166 0.0186 0.0207 0.0227 0.0248 0.0269 0.0289 -14.3 
+
+Iteration 12| Distributions update | L = 5803.4888
+Iteration 12| Hyperparameter optimization | L = 5803.4888
+HP = 0.0365 0.00738 0.00999 -0.0101 -0.00809 -0.00603 -0.00398 -0.00192 0.000133 0.00219 0.00424 0.0063 0.00835 0.0104 0.0125 0.0145 0.0166 0.0186 0.0207 0.0227 0.0248 0.0269 0.0289 -14.3 
+
+Iteration 13| Distributions update | L = 5937.1456
+Iteration 13| Hyperparameter optimization | L = 5937.1456
+HP = 0.0365 0.00738 0.00999 -0.0101 -0.00809 -0.00603 -0.00398 -0.00192 0.000133 0.00219 0.00424 0.0063 0.00835 0.0104 0.0125 0.0145 0.0166 0.0186 0.0207 0.0227 0.0248 0.0269 0.0289 -14.3 
+
+Iteration 14| Distributions update | L = 6224.653
+Iteration 14| Hyperparameter optimization | L = 6224.653
+HP = 0.0365 0.00738 0.00999 -0.0101 -0.00809 -0.00603 -0.00398 -0.00192 0.000133 0.00219 0.00424 0.0063 0.00835 0.0104 0.0125 0.0145 0.0166 0.0186 0.0207 0.0227 0.0248 0.0269 0.0289 -14.3 
+
+Iteration 15| Distributions update | L = 6679.4794
+Iteration 15| Hyperparameter optimization | L = 6679.4794
+HP = 0.0365 0.00738 0.00999 -0.0101 -0.00809 -0.00603 -0.00398 -0.00192 0.000133 0.00219 0.00424 0.0063 0.00835 0.0104 0.0125 0.0145 0.0166 0.0186 0.0207 0.0227 0.0248 0.0269 0.0289 -14.3 
+
+Iteration 16| Distributions update | L = 6817.1336
+Iteration 16| Hyperparameter optimization | L = 6819.3435
+HP = 0.0365 0.00738 0.00999 -0.0101 -0.00809 -0.00603 -0.00398 -0.00192 0.000133 0.00219 0.00424 0.0063 0.00835 0.0104 0.0125 0.0145 0.0166 0.0186 0.0207 0.0227 0.0248 0.0269 0.0289 -14.3 
+
+Iteration 17| Distributions update | L = 6868.6891
+Iteration 17| Hyperparameter optimization | L = 6868.6891
+HP = 0.0365 0.00738 0.00999 -0.0101 -0.00809 -0.00603 -0.00398 -0.00192 0.000133 0.00219 0.00424 0.0063 0.00835 0.0104 0.0125 0.0145 0.0166 0.0186 0.0207 0.0227 0.0248 0.0269 0.0289 -14.3 
+
+Iteration 18| Distributions update | L = 8193.7161
+Iteration 18| Hyperparameter optimization | L = 8193.7161
+HP = 0.0365 0.00738 0.00999 -0.0101 -0.00809 -0.00603 -0.00398 -0.00192 0.000133 0.00219 0.00424 0.0063 0.00835 0.0104 0.0125 0.0145 0.0166 0.0186 0.0207 0.0227 0.0248 0.0269 0.0289 -14.3 
+
+Iteration 19| Distributions update | L = 8958.5924
+Iteration 19| Hyperparameter optimization | L = 8958.5924
+HP = 0.0365 0.00738 0.00999 -0.0101 -0.00809 -0.00603 -0.00398 -0.00192 0.000133 0.00219 0.00424 0.0063 0.00835 0.0104 0.0125 0.0145 0.0166 0.0186 0.0207 0.0227 0.0248 0.0269 0.0289 -14.3 
+
+Iteration 20| Distributions update | L = 9067.3562
+Iteration 20| Hyperparameter optimization | L = 9067.3562
+HP = 0.0365 0.00738 0.00999 -0.0101 -0.00809 -0.00603 -0.00398 -0.00192 0.000133 0.00219 0.00424 0.0063 0.00835 0.0104 0.0125 0.0145 0.0166 0.0186 0.0207 0.0227 0.0248 0.0269 0.0289 -14.3 
+
+Starting Variational Inference
+Initial Lower Bound L = -5.85e+07
+Iteration 1| Distributions update | L = -453.81804
+Iteration 1| Hyperparameter optimization | L = -452.46237
+HP = 0.0365 0.00747 0.00999 -0.00669 -0.00483 -0.00297 -0.00112 0.000743 0.0026 0.00446 0.00632 0.00818 0.01 0.0119 0.0138 0.0156 0.0175 0.0193 0.0212 0.023 0.0249 0.0268 0.0286 -14.4 
+
+Iteration 2| Distributions update | L = 74.518873
+Iteration 2| Hyperparameter optimization | L = 74.518873
+HP = 0.0365 0.00747 0.00999 -0.00669 -0.00483 -0.00297 -0.00112 0.000743 0.0026 0.00446 0.00632 0.00818 0.01 0.0119 0.0138 0.0156 0.0175 0.0193 0.0212 0.023 0.0249 0.0268 0.0286 -14.4 
+
+Iteration 3| Distributions update | L = 130.97891
+Iteration 3| Hyperparameter optimization | L = 130.97891
+HP = 0.0365 0.00747 0.00999 -0.00669 -0.00483 -0.00297 -0.00112 0.000743 0.0026 0.00446 0.00632 0.00818 0.01 0.0119 0.0138 0.0156 0.0175 0.0193 0.0212 0.023 0.0249 0.0268 0.0286 -14.4 
+
+Iteration 4| Distributions update | L = 1223.61
+Iteration 4| Hyperparameter optimization | L = 1223.61
+HP = 0.0365 0.00747 0.00999 -0.00669 -0.00483 -0.00297 -0.00112 0.000743 0.0026 0.00446 0.00632 0.00818 0.01 0.0119 0.0138 0.0156 0.0175 0.0193 0.0212 0.023 0.0249 0.0268 0.0286 -14.4 
+
+Iteration 5| Distributions update | L = 1545.5464
+Iteration 5| Hyperparameter optimization | L = 1545.5464
+HP = 0.0365 0.00747 0.00999 -0.00669 -0.00483 -0.00297 -0.00112 0.000743 0.0026 0.00446 0.00632 0.00818 0.01 0.0119 0.0138 0.0156 0.0175 0.0193 0.0212 0.023 0.0249 0.0268 0.0286 -14.4 
+
+Iteration 6| Distributions update | L = 1721.1978
+Iteration 6| Hyperparameter optimization | L = 1721.1978
+HP = 0.0365 0.00747 0.00999 -0.00669 -0.00483 -0.00297 -0.00112 0.000743 0.0026 0.00446 0.00632 0.00818 0.01 0.0119 0.0138 0.0156 0.0175 0.0193 0.0212 0.023 0.0249 0.0268 0.0286 -14.4 
+
+Iteration 7| Distributions update | L = 1835.7212
+Iteration 7| Hyperparameter optimization | L = 1835.7212
+HP = 0.0365 0.00747 0.00999 -0.00669 -0.00483 -0.00297 -0.00112 0.000743 0.0026 0.00446 0.00632 0.00818 0.01 0.0119 0.0138 0.0156 0.0175 0.0193 0.0212 0.023 0.0249 0.0268 0.0286 -14.4 
+
+Iteration 8| Distributions update | L = 1921.675
+Iteration 8| Hyperparameter optimization | L = 1921.675
+HP = 0.0365 0.00747 0.00999 -0.00669 -0.00483 -0.00297 -0.00112 0.000743 0.0026 0.00446 0.00632 0.00818 0.01 0.0119 0.0138 0.0156 0.0175 0.0193 0.0212 0.023 0.0249 0.0268 0.0286 -14.4 
+
+Iteration 9| Distributions update | L = 1975.2442
+Iteration 9| Hyperparameter optimization | L = 1975.2442
+HP = 0.0365 0.00747 0.00999 -0.00669 -0.00483 -0.00297 -0.00112 0.000743 0.0026 0.00446 0.00632 0.00818 0.01 0.0119 0.0138 0.0156 0.0175 0.0193 0.0212 0.023 0.0249 0.0268 0.0286 -14.4 
+
+Iteration 10| Distributions update | L = 2029.392
+Iteration 10| Hyperparameter optimization | L = 2029.392
+HP = 0.0365 0.00747 0.00999 -0.00669 -0.00483 -0.00297 -0.00112 0.000743 0.0026 0.00446 0.00632 0.00818 0.01 0.0119 0.0138 0.0156 0.0175 0.0193 0.0212 0.023 0.0249 0.0268 0.0286 -14.4 
+
+Iteration 11| Distributions update | L = 2047.2624
+Iteration 11| Hyperparameter optimization | L = 2047.2624
+HP = 0.0365 0.00747 0.00999 -0.00669 -0.00483 -0.00297 -0.00112 0.000743 0.0026 0.00446 0.00632 0.00818 0.01 0.0119 0.0138 0.0156 0.0175 0.0193 0.0212 0.023 0.0249 0.0268 0.0286 -14.4 
+
+Iteration 12| Distributions update | L = 2065.862
+Iteration 12| Hyperparameter optimization | L = 2065.862
+HP = 0.0365 0.00747 0.00999 -0.00669 -0.00483 -0.00297 -0.00112 0.000743 0.0026 0.00446 0.00632 0.00818 0.01 0.0119 0.0138 0.0156 0.0175 0.0193 0.0212 0.023 0.0249 0.0268 0.0286 -14.4 
+
+Iteration 13| Distributions update | L = 2138.3005
+Iteration 13| Hyperparameter optimization | L = 2138.3005
+HP = 0.0365 0.00747 0.00999 -0.00669 -0.00483 -0.00297 -0.00112 0.000743 0.0026 0.00446 0.00632 0.00818 0.01 0.0119 0.0138 0.0156 0.0175 0.0193 0.0212 0.023 0.0249 0.0268 0.0286 -14.4 
+
+Iteration 14| Distributions update | L = 2242.8558
+Iteration 14| Hyperparameter optimization | L = 2242.8558
+HP = 0.0365 0.00747 0.00999 -0.00669 -0.00483 -0.00297 -0.00112 0.000743 0.0026 0.00446 0.00632 0.00818 0.01 0.0119 0.0138 0.0156 0.0175 0.0193 0.0212 0.023 0.0249 0.0268 0.0286 -14.4 
+
+Iteration 15| Distributions update | L = 2304.4785
+Iteration 15| Hyperparameter optimization | L = 2304.4785
+HP = 0.0365 0.00747 0.00999 -0.00669 -0.00483 -0.00297 -0.00112 0.000743 0.0026 0.00446 0.00632 0.00818 0.01 0.0119 0.0138 0.0156 0.0175 0.0193 0.0212 0.023 0.0249 0.0268 0.0286 -14.4 
+
+Iteration 16| Distributions update | L = 2418.9856
+Iteration 16| Hyperparameter optimization | L = 2418.9856
+HP = 0.0365 0.00747 0.00999 -0.00669 -0.00483 -0.00297 -0.00112 0.000743 0.0026 0.00446 0.00632 0.00818 0.01 0.0119 0.0138 0.0156 0.0175 0.0193 0.0212 0.023 0.0249 0.0268 0.0286 -14.4 
+
+Iteration 17| Distributions update | L = 2506.2091
+Iteration 17| Hyperparameter optimization | L = 2506.2091
+HP = 0.0365 0.00747 0.00999 -0.00669 -0.00483 -0.00297 -0.00112 0.000743 0.0026 0.00446 0.00632 0.00818 0.01 0.0119 0.0138 0.0156 0.0175 0.0193 0.0212 0.023 0.0249 0.0268 0.0286 -14.4 
+
+Iteration 18| Distributions update | L = 2531.264
+Iteration 18| Hyperparameter optimization | L = 2531.264
+HP = 0.0365 0.00747 0.00999 -0.00669 -0.00483 -0.00297 -0.00112 0.000743 0.0026 0.00446 0.00632 0.00818 0.01 0.0119 0.0138 0.0156 0.0175 0.0193 0.0212 0.023 0.0249 0.0268 0.0286 -14.4 
+
+Iteration 19| Distributions update | L = 2547.5322
+Iteration 19| Hyperparameter optimization | L = 2547.5322
+HP = 0.0365 0.00747 0.00999 -0.00669 -0.00483 -0.00297 -0.00112 0.000743 0.0026 0.00446 0.00632 0.00818 0.01 0.0119 0.0138 0.0156 0.0175 0.0193 0.0212 0.023 0.0249 0.0268 0.0286 -14.4 
+
+Iteration 20| Distributions update | L = 2564.8638
+Iteration 20| Hyperparameter optimization | L = 2564.8638
+HP = 0.0365 0.00747 0.00999 -0.00669 -0.00483 -0.00297 -0.00112 0.000743 0.0026 0.00446 0.00632 0.00818 0.01 0.0119 0.0138 0.0156 0.0175 0.0193 0.0212 0.023 0.0249 0.0268 0.0286 -14.4 
+
+Starting Variational Inference
+Initial Lower Bound L = -5.58e+07
+Iteration 1| Distributions update | L = -2160.4297
+Iteration 1| Hyperparameter optimization | L = -2156.453
+HP = 0.0365 0.00748 0.00999 -0.00836 -0.00662 -0.00489 -0.00315 -0.00141 0.000329 0.00207 0.00381 0.00554 0.00728 0.00902 0.0108 0.0125 0.0142 0.016 0.0177 0.0195 0.0212 0.0229 0.0247 -14.4 
+
+Iteration 2| Distributions update | L = 52.031524
+Iteration 2| Hyperparameter optimization | L = 52.031524
+HP = 0.0365 0.00748 0.00999 -0.00836 -0.00662 -0.00489 -0.00315 -0.00141 0.000329 0.00207 0.00381 0.00554 0.00728 0.00902 0.0108 0.0125 0.0142 0.016 0.0177 0.0195 0.0212 0.0229 0.0247 -14.4 
+
+Iteration 3| Distributions update | L = 208.99924
+Iteration 3| Hyperparameter optimization | L = 208.99924
+HP = 0.0365 0.00748 0.00999 -0.00836 -0.00662 -0.00489 -0.00315 -0.00141 0.000329 0.00207 0.00381 0.00554 0.00728 0.00902 0.0108 0.0125 0.0142 0.016 0.0177 0.0195 0.0212 0.0229 0.0247 -14.4 
+
+Iteration 4| Distributions update | L = 1036.6734
+Iteration 4| Hyperparameter optimization | L = 1036.8874
+HP = 0.0365 0.00748 0.00999 -0.00836 -0.00662 -0.00489 -0.00315 -0.00141 0.000329 0.00207 0.00381 0.00554 0.00728 0.00902 0.0108 0.0125 0.0142 0.016 0.0177 0.0195 0.0212 0.0229 0.0247 -14.4 
+
+Iteration 5| Distributions update | L = 1142.4864
+Iteration 5| Hyperparameter optimization | L = 1142.4864
+HP = 0.0365 0.00748 0.00999 -0.00836 -0.00662 -0.00489 -0.00315 -0.00141 0.000329 0.00207 0.00381 0.00554 0.00728 0.00902 0.0108 0.0125 0.0142 0.016 0.0177 0.0195 0.0212 0.0229 0.0247 -14.4 
+
+Iteration 6| Distributions update | L = 1338.6123
+Iteration 6| Hyperparameter optimization | L = 1338.9342
+HP = 0.0365 0.00748 0.00999 -0.00836 -0.00662 -0.00489 -0.00315 -0.00141 0.000329 0.00207 0.00381 0.00554 0.00728 0.00902 0.0108 0.0125 0.0142 0.016 0.0177 0.0195 0.0212 0.0229 0.0247 -14.4 
+
+Iteration 7| Distributions update | L = 1448.9638
+Iteration 7| Hyperparameter optimization | L = 1448.9638
+HP = 0.0365 0.00748 0.00999 -0.00836 -0.00662 -0.00489 -0.00315 -0.00141 0.000329 0.00207 0.00381 0.00554 0.00728 0.00902 0.0108 0.0125 0.0142 0.016 0.0177 0.0195 0.0212 0.0229 0.0247 -14.4 
+
+Iteration 8| Distributions update | L = 1542.6059
+Iteration 8| Hyperparameter optimization | L = 1542.6059
+HP = 0.0365 0.00748 0.00999 -0.00836 -0.00662 -0.00489 -0.00315 -0.00141 0.000329 0.00207 0.00381 0.00554 0.00728 0.00902 0.0108 0.0125 0.0142 0.016 0.0177 0.0195 0.0212 0.0229 0.0247 -14.4 
+
+Iteration 9| Distributions update | L = 1699.641
+Iteration 9| Hyperparameter optimization | L = 1699.641
+HP = 0.0365 0.00748 0.00999 -0.00836 -0.00662 -0.00489 -0.00315 -0.00141 0.000329 0.00207 0.00381 0.00554 0.00728 0.00902 0.0108 0.0125 0.0142 0.016 0.0177 0.0195 0.0212 0.0229 0.0247 -14.4 
+
+Iteration 10| Distributions update | L = 1836.9629
+Iteration 10| Hyperparameter optimization | L = 1836.9629
+HP = 0.0365 0.00748 0.00999 -0.00836 -0.00662 -0.00489 -0.00315 -0.00141 0.000329 0.00207 0.00381 0.00554 0.00728 0.00902 0.0108 0.0125 0.0142 0.016 0.0177 0.0195 0.0212 0.0229 0.0247 -14.4 
+
+Iteration 11| Distributions update | L = 1866.6957
+Iteration 11| Hyperparameter optimization | L = 1866.6957
+HP = 0.0365 0.00748 0.00999 -0.00836 -0.00662 -0.00489 -0.00315 -0.00141 0.000329 0.00207 0.00381 0.00554 0.00728 0.00902 0.0108 0.0125 0.0142 0.016 0.0177 0.0195 0.0212 0.0229 0.0247 -14.4 
+
+Iteration 12| Distributions update | L = 2467.8975
+Iteration 12| Hyperparameter optimization | L = 2467.8975
+HP = 0.0365 0.00748 0.00999 -0.00836 -0.00662 -0.00489 -0.00315 -0.00141 0.000329 0.00207 0.00381 0.00554 0.00728 0.00902 0.0108 0.0125 0.0142 0.016 0.0177 0.0195 0.0212 0.0229 0.0247 -14.4 
+
+Iteration 13| Distributions update | L = 2485.8552
+Iteration 13| Hyperparameter optimization | L = 2485.8552
+HP = 0.0365 0.00748 0.00999 -0.00836 -0.00662 -0.00489 -0.00315 -0.00141 0.000329 0.00207 0.00381 0.00554 0.00728 0.00902 0.0108 0.0125 0.0142 0.016 0.0177 0.0195 0.0212 0.0229 0.0247 -14.4 
+
+Iteration 14| Distributions update | L = 2563.9172
+Iteration 14| Hyperparameter optimization | L = 2563.9172
+HP = 0.0365 0.00748 0.00999 -0.00836 -0.00662 -0.00489 -0.00315 -0.00141 0.000329 0.00207 0.00381 0.00554 0.00728 0.00902 0.0108 0.0125 0.0142 0.016 0.0177 0.0195 0.0212 0.0229 0.0247 -14.4 
+
+Iteration 15| Distributions update | L = 2615.4148
+Iteration 15| Hyperparameter optimization | L = 2615.4148
+HP = 0.0365 0.00748 0.00999 -0.00836 -0.00662 -0.00489 -0.00315 -0.00141 0.000329 0.00207 0.00381 0.00554 0.00728 0.00902 0.0108 0.0125 0.0142 0.016 0.0177 0.0195 0.0212 0.0229 0.0247 -14.4 
+
+Iteration 16| Distributions update | L = 2663.1266
+Iteration 16| Hyperparameter optimization | L = 2663.1266
+HP = 0.0365 0.00748 0.00999 -0.00836 -0.00662 -0.00489 -0.00315 -0.00141 0.000329 0.00207 0.00381 0.00554 0.00728 0.00902 0.0108 0.0125 0.0142 0.016 0.0177 0.0195 0.0212 0.0229 0.0247 -14.4 
+
+Iteration 17| Distributions update | L = 2685.2862
+Iteration 17| Hyperparameter optimization | L = 2685.4266
+HP = 0.0365 0.00748 0.00999 -0.00836 -0.00662 -0.00489 -0.00315 -0.00141 0.000329 0.00207 0.00381 0.00554 0.00728 0.00902 0.0108 0.0125 0.0142 0.016 0.0177 0.0195 0.0212 0.0229 0.0247 -14.4 
+
+Iteration 18| Distributions update | L = 2700.7343
+Iteration 18| Hyperparameter optimization | L = 2700.7343
+HP = 0.0365 0.00748 0.00999 -0.00836 -0.00662 -0.00489 -0.00315 -0.00141 0.000329 0.00207 0.00381 0.00554 0.00728 0.00902 0.0108 0.0125 0.0142 0.016 0.0177 0.0195 0.0212 0.0229 0.0247 -14.4 
+
+Iteration 19| Distributions update | L = 2720.5433
+Iteration 19| Hyperparameter optimization | L = 2720.5433
+HP = 0.0365 0.00748 0.00999 -0.00836 -0.00662 -0.00489 -0.00315 -0.00141 0.000329 0.00207 0.00381 0.00554 0.00728 0.00902 0.0108 0.0125 0.0142 0.016 0.0177 0.0195 0.0212 0.0229 0.0247 -14.4 
+
+Iteration 20| Distributions update | L = 2731.259
+Iteration 20| Hyperparameter optimization | L = 2731.259
+HP = 0.0365 0.00748 0.00999 -0.00836 -0.00662 -0.00489 -0.00315 -0.00141 0.000329 0.00207 0.00381 0.00554 0.00728 0.00902 0.0108 0.0125 0.0142 0.016 0.0177 0.0195 0.0212 0.0229 0.0247 -14.4 
+
+Starting Variational Inference
+Initial Lower Bound L = -6.29e+07
+Iteration 1| Distributions update | L = -726.29771
+Iteration 1| Hyperparameter optimization | L = -696.37722
+HP = 0.0365 0.00742 0.00999 -0.00592 -0.00436 -0.0028 -0.00124 0.000323 0.00188 0.00345 0.00501 0.00657 0.00813 0.00969 0.0113 0.0128 0.0144 0.0159 0.0175 0.0191 0.0206 0.0222 0.0238 -14.3 
+
+Iteration 2| Distributions update | L = 86.024563
+Iteration 2| Hyperparameter optimization | L = 86.024563
+HP = 0.0365 0.00742 0.00999 -0.00592 -0.00436 -0.0028 -0.00124 0.000323 0.00188 0.00345 0.00501 0.00657 0.00813 0.00969 0.0113 0.0128 0.0144 0.0159 0.0175 0.0191 0.0206 0.0222 0.0238 -14.3 
+
+Iteration 3| Distributions update | L = 276.30137
+Iteration 3| Hyperparameter optimization | L = 276.30137
+HP = 0.0365 0.00742 0.00999 -0.00592 -0.00436 -0.0028 -0.00124 0.000323 0.00188 0.00345 0.00501 0.00657 0.00813 0.00969 0.0113 0.0128 0.0144 0.0159 0.0175 0.0191 0.0206 0.0222 0.0238 -14.3 
+
+Iteration 4| Distributions update | L = 326.69384
+Iteration 4| Hyperparameter optimization | L = 326.69384
+HP = 0.0365 0.00742 0.00999 -0.00592 -0.00436 -0.0028 -0.00124 0.000323 0.00188 0.00345 0.00501 0.00657 0.00813 0.00969 0.0113 0.0128 0.0144 0.0159 0.0175 0.0191 0.0206 0.0222 0.0238 -14.3 
+
+Iteration 5| Distributions update | L = 2653.6918
+Iteration 5| Hyperparameter optimization | L = 2653.6918
+HP = 0.0365 0.00742 0.00999 -0.00592 -0.00436 -0.0028 -0.00124 0.000323 0.00188 0.00345 0.00501 0.00657 0.00813 0.00969 0.0113 0.0128 0.0144 0.0159 0.0175 0.0191 0.0206 0.0222 0.0238 -14.3 
+
+Iteration 6| Distributions update | L = 3034.9985
+Iteration 6| Hyperparameter optimization | L = 3034.9985
+HP = 0.0365 0.00742 0.00999 -0.00592 -0.00436 -0.0028 -0.00124 0.000323 0.00188 0.00345 0.00501 0.00657 0.00813 0.00969 0.0113 0.0128 0.0144 0.0159 0.0175 0.0191 0.0206 0.0222 0.0238 -14.3 
+
+Iteration 7| Distributions update | L = 3111.7751
+Iteration 7| Hyperparameter optimization | L = 3111.7751
+HP = 0.0365 0.00742 0.00999 -0.00592 -0.00436 -0.0028 -0.00124 0.000323 0.00188 0.00345 0.00501 0.00657 0.00813 0.00969 0.0113 0.0128 0.0144 0.0159 0.0175 0.0191 0.0206 0.0222 0.0238 -14.3 
+
+Iteration 8| Distributions update | L = 3185.4256
+Iteration 8| Hyperparameter optimization | L = 3185.4256
+HP = 0.0365 0.00742 0.00999 -0.00592 -0.00436 -0.0028 -0.00124 0.000323 0.00188 0.00345 0.00501 0.00657 0.00813 0.00969 0.0113 0.0128 0.0144 0.0159 0.0175 0.0191 0.0206 0.0222 0.0238 -14.3 
+
+Iteration 9| Distributions update | L = 3249.0956
+Iteration 9| Hyperparameter optimization | L = 3249.0956
+HP = 0.0365 0.00742 0.00999 -0.00592 -0.00436 -0.0028 -0.00124 0.000323 0.00188 0.00345 0.00501 0.00657 0.00813 0.00969 0.0113 0.0128 0.0144 0.0159 0.0175 0.0191 0.0206 0.0222 0.0238 -14.3 
+
+Iteration 10| Distributions update | L = 4121.4965
+Iteration 10| Hyperparameter optimization | L = 4121.4965
+HP = 0.0365 0.00742 0.00999 -0.00592 -0.00436 -0.0028 -0.00124 0.000323 0.00188 0.00345 0.00501 0.00657 0.00813 0.00969 0.0113 0.0128 0.0144 0.0159 0.0175 0.0191 0.0206 0.0222 0.0238 -14.3 
+
+Iteration 11| Distributions update | L = 4176.5533
+Iteration 11| Hyperparameter optimization | L = 4176.5533
+HP = 0.0365 0.00742 0.00999 -0.00592 -0.00436 -0.0028 -0.00124 0.000323 0.00188 0.00345 0.00501 0.00657 0.00813 0.00969 0.0113 0.0128 0.0144 0.0159 0.0175 0.0191 0.0206 0.0222 0.0238 -14.3 
+
+Iteration 12| Distributions update | L = 4207.236
+Iteration 12| Hyperparameter optimization | L = 4207.236
+HP = 0.0365 0.00742 0.00999 -0.00592 -0.00436 -0.0028 -0.00124 0.000323 0.00188 0.00345 0.00501 0.00657 0.00813 0.00969 0.0113 0.0128 0.0144 0.0159 0.0175 0.0191 0.0206 0.0222 0.0238 -14.3 
+
+Iteration 13| Distributions update | L = 4268.2708
+Iteration 13| Hyperparameter optimization | L = 4268.2708
+HP = 0.0365 0.00742 0.00999 -0.00592 -0.00436 -0.0028 -0.00124 0.000323 0.00188 0.00345 0.00501 0.00657 0.00813 0.00969 0.0113 0.0128 0.0144 0.0159 0.0175 0.0191 0.0206 0.0222 0.0238 -14.3 
+
+Iteration 14| Distributions update | L = 4400.8396
+Iteration 14| Hyperparameter optimization | L = 4400.8396
+HP = 0.0365 0.00742 0.00999 -0.00592 -0.00436 -0.0028 -0.00124 0.000323 0.00188 0.00345 0.00501 0.00657 0.00813 0.00969 0.0113 0.0128 0.0144 0.0159 0.0175 0.0191 0.0206 0.0222 0.0238 -14.3 
+
+Iteration 15| Distributions update | L = 4445.5294
+Iteration 15| Hyperparameter optimization | L = 4445.5294
+HP = 0.0365 0.00742 0.00999 -0.00592 -0.00436 -0.0028 -0.00124 0.000323 0.00188 0.00345 0.00501 0.00657 0.00813 0.00969 0.0113 0.0128 0.0144 0.0159 0.0175 0.0191 0.0206 0.0222 0.0238 -14.3 
+
+Iteration 16| Distributions update | L = 4453.4823
+Iteration 16| Hyperparameter optimization | L = 4453.4823
+HP = 0.0365 0.00742 0.00999 -0.00592 -0.00436 -0.0028 -0.00124 0.000323 0.00188 0.00345 0.00501 0.00657 0.00813 0.00969 0.0113 0.0128 0.0144 0.0159 0.0175 0.0191 0.0206 0.0222 0.0238 -14.3 
+
+Iteration 17| Distributions update | L = 4688.2075
+Iteration 17| Hyperparameter optimization | L = 4688.2075
+HP = 0.0365 0.00742 0.00999 -0.00592 -0.00436 -0.0028 -0.00124 0.000323 0.00188 0.00345 0.00501 0.00657 0.00813 0.00969 0.0113 0.0128 0.0144 0.0159 0.0175 0.0191 0.0206 0.0222 0.0238 -14.3 
+
+Iteration 18| Distributions update | L = 4787.9642
+Iteration 18| Hyperparameter optimization | L = 4787.9642
+HP = 0.0365 0.00742 0.00999 -0.00592 -0.00436 -0.0028 -0.00124 0.000323 0.00188 0.00345 0.00501 0.00657 0.00813 0.00969 0.0113 0.0128 0.0144 0.0159 0.0175 0.0191 0.0206 0.0222 0.0238 -14.3 
+
+Iteration 19| Distributions update | L = 4932.7724
+Iteration 19| Hyperparameter optimization | L = 4932.7724
+HP = 0.0365 0.00742 0.00999 -0.00592 -0.00436 -0.0028 -0.00124 0.000323 0.00188 0.00345 0.00501 0.00657 0.00813 0.00969 0.0113 0.0128 0.0144 0.0159 0.0175 0.0191 0.0206 0.0222 0.0238 -14.3 
+
+Iteration 20| Distributions update | L = 4937.8667
+Iteration 20| Hyperparameter optimization | L = 4937.8667
+HP = 0.0365 0.00742 0.00999 -0.00592 -0.00436 -0.0028 -0.00124 0.000323 0.00188 0.00345 0.00501 0.00657 0.00813 0.00969 0.0113 0.0128 0.0144 0.0159 0.0175 0.0191 0.0206 0.0222 0.0238 -14.3 
+
+Starting Variational Inference
+Initial Lower Bound L = -8.82e+07
+Iteration 1| Distributions update | L = -13793.507
+Iteration 1| Hyperparameter optimization | L = -13793.447
+HP = 0.0365 0.00751 0.00999 -0.00851 -0.00673 -0.00495 -0.00317 -0.00139 0.000392 0.00217 0.00395 0.00573 0.00751 0.00929 0.0111 0.0128 0.0146 0.0164 0.0182 0.02 0.0217 0.0235 0.0253 -14.4 
+
+Iteration 2| Distributions update | L = -12792.219
+Iteration 2| Hyperparameter optimization | L = -12792.219
+HP = 0.0365 0.00751 0.00999 -0.00851 -0.00673 -0.00495 -0.00317 -0.00139 0.000392 0.00217 0.00395 0.00573 0.00751 0.00929 0.0111 0.0128 0.0146 0.0164 0.0182 0.02 0.0217 0.0235 0.0253 -14.4 
+
+Iteration 3| Distributions update | L = -11857.798
+Iteration 3| Hyperparameter optimization | L = -11857.798
+HP = 0.0365 0.00751 0.00999 -0.00851 -0.00673 -0.00495 -0.00317 -0.00139 0.000392 0.00217 0.00395 0.00573 0.00751 0.00929 0.0111 0.0128 0.0146 0.0164 0.0182 0.02 0.0217 0.0235 0.0253 -14.4 
+
+Iteration 4| Distributions update | L = 3923.9745
+Iteration 4| Hyperparameter optimization | L = 3923.9745
+HP = 0.0365 0.00751 0.00999 -0.00851 -0.00673 -0.00495 -0.00317 -0.00139 0.000392 0.00217 0.00395 0.00573 0.00751 0.00929 0.0111 0.0128 0.0146 0.0164 0.0182 0.02 0.0217 0.0235 0.0253 -14.4 
+
+Iteration 5| Distributions update | L = 5121.9846
+Iteration 5| Hyperparameter optimization | L = 5121.9846
+HP = 0.0365 0.00751 0.00999 -0.00851 -0.00673 -0.00495 -0.00317 -0.00139 0.000392 0.00217 0.00395 0.00573 0.00751 0.00929 0.0111 0.0128 0.0146 0.0164 0.0182 0.02 0.0217 0.0235 0.0253 -14.4 
+
+Iteration 6| Distributions update | L = 5156.6037
+Iteration 6| Hyperparameter optimization | L = 5156.6037
+HP = 0.0365 0.00751 0.00999 -0.00851 -0.00673 -0.00495 -0.00317 -0.00139 0.000392 0.00217 0.00395 0.00573 0.00751 0.00929 0.0111 0.0128 0.0146 0.0164 0.0182 0.02 0.0217 0.0235 0.0253 -14.4 
+
+Iteration 7| Distributions update | L = 6330.8447
+Iteration 7| Hyperparameter optimization | L = 6330.8447
+HP = 0.0365 0.00751 0.00999 -0.00851 -0.00673 -0.00495 -0.00317 -0.00139 0.000392 0.00217 0.00395 0.00573 0.00751 0.00929 0.0111 0.0128 0.0146 0.0164 0.0182 0.02 0.0217 0.0235 0.0253 -14.4 
+
+Iteration 8| Distributions update | L = 6497.7668
+Iteration 8| Hyperparameter optimization | L = 6497.7668
+HP = 0.0365 0.00751 0.00999 -0.00851 -0.00673 -0.00495 -0.00317 -0.00139 0.000392 0.00217 0.00395 0.00573 0.00751 0.00929 0.0111 0.0128 0.0146 0.0164 0.0182 0.02 0.0217 0.0235 0.0253 -14.4 
+
+Iteration 9| Distributions update | L = 6534.4677
+Iteration 9| Hyperparameter optimization | L = 6534.4677
+HP = 0.0365 0.00751 0.00999 -0.00851 -0.00673 -0.00495 -0.00317 -0.00139 0.000392 0.00217 0.00395 0.00573 0.00751 0.00929 0.0111 0.0128 0.0146 0.0164 0.0182 0.02 0.0217 0.0235 0.0253 -14.4 
+
+Iteration 10| Distributions update | L = 6554.0514
+Iteration 10| Hyperparameter optimization | L = 6554.0514
+HP = 0.0365 0.00751 0.00999 -0.00851 -0.00673 -0.00495 -0.00317 -0.00139 0.000392 0.00217 0.00395 0.00573 0.00751 0.00929 0.0111 0.0128 0.0146 0.0164 0.0182 0.02 0.0217 0.0235 0.0253 -14.4 
+
+Iteration 11| Distributions update | L = 6611.1577
+Iteration 11| Hyperparameter optimization | L = 6611.1577
+HP = 0.0365 0.00751 0.00999 -0.00851 -0.00673 -0.00495 -0.00317 -0.00139 0.000392 0.00217 0.00395 0.00573 0.00751 0.00929 0.0111 0.0128 0.0146 0.0164 0.0182 0.02 0.0217 0.0235 0.0253 -14.4 
+
+Iteration 12| Distributions update | L = 6636.4068
+Iteration 12| Hyperparameter optimization | L = 6636.4068
+HP = 0.0365 0.00751 0.00999 -0.00851 -0.00673 -0.00495 -0.00317 -0.00139 0.000392 0.00217 0.00395 0.00573 0.00751 0.00929 0.0111 0.0128 0.0146 0.0164 0.0182 0.02 0.0217 0.0235 0.0253 -14.4 
+
+Iteration 13| Distributions update | L = 6645.6195
+Iteration 13| Hyperparameter optimization | L = 6645.6195
+HP = 0.0365 0.00751 0.00999 -0.00851 -0.00673 -0.00495 -0.00317 -0.00139 0.000392 0.00217 0.00395 0.00573 0.00751 0.00929 0.0111 0.0128 0.0146 0.0164 0.0182 0.02 0.0217 0.0235 0.0253 -14.4 
+
+Iteration 14| Distributions update | L = 6663.0604
+Iteration 14| Hyperparameter optimization | L = 6663.0604
+HP = 0.0365 0.00751 0.00999 -0.00851 -0.00673 -0.00495 -0.00317 -0.00139 0.000392 0.00217 0.00395 0.00573 0.00751 0.00929 0.0111 0.0128 0.0146 0.0164 0.0182 0.02 0.0217 0.0235 0.0253 -14.4 
+
+Iteration 15| Distributions update | L = 6690.0719
+Iteration 15| Hyperparameter optimization | L = 6690.0719
+HP = 0.0365 0.00751 0.00999 -0.00851 -0.00673 -0.00495 -0.00317 -0.00139 0.000392 0.00217 0.00395 0.00573 0.00751 0.00929 0.0111 0.0128 0.0146 0.0164 0.0182 0.02 0.0217 0.0235 0.0253 -14.4 
+
+Iteration 16| Distributions update | L = 6703.201
+Iteration 16| Hyperparameter optimization | L = 6703.6527
+HP = 0.0365 0.00751 0.00999 -0.00851 -0.00673 -0.00495 -0.00317 -0.00139 0.000392 0.00217 0.00395 0.00573 0.00751 0.00929 0.0111 0.0128 0.0146 0.0164 0.0182 0.02 0.0217 0.0235 0.0253 -14.4 
+
+Iteration 17| Distributions update | L = 6707.0831
+Iteration 17| Hyperparameter optimization | L = 6707.0831
+HP = 0.0365 0.00751 0.00999 -0.00851 -0.00673 -0.00495 -0.00317 -0.00139 0.000392 0.00217 0.00395 0.00573 0.00751 0.00929 0.0111 0.0128 0.0146 0.0164 0.0182 0.02 0.0217 0.0235 0.0253 -14.4 
+
+Iteration 18| Distributions update | L = 6707.0831
+Iteration 18| Hyperparameter optimization | L = 6707.0831
+HP = 0.0365 0.00751 0.00999 -0.00851 -0.00673 -0.00495 -0.00317 -0.00139 0.000392 0.00217 0.00395 0.00573 0.00751 0.00929 0.0111 0.0128 0.0146 0.0164 0.0182 0.02 0.0217 0.0235 0.0253 -14.4 
+
+Iteration 19| Distributions update | L = 6707.0832
+Iteration 19| Hyperparameter optimization | L = 6707.0832
+HP = 0.0365 0.00751 0.00999 -0.00851 -0.00673 -0.00495 -0.00317 -0.00139 0.000392 0.00217 0.00395 0.00573 0.00751 0.00929 0.0111 0.0128 0.0146 0.0164 0.0182 0.02 0.0217 0.0235 0.0253 -14.4 
+
+Iteration 20| Distributions update | L = 6707.0832
+Iteration 20| Hyperparameter optimization | L = 6707.0832
+HP = 0.0365 0.00751 0.00999 -0.00851 -0.00673 -0.00495 -0.00317 -0.00139 0.000392 0.00217 0.00395 0.00573 0.00751 0.00929 0.0111 0.0128 0.0146 0.0164 0.0182 0.02 0.0217 0.0235 0.0253 -14.4 
+
+CONVERGENCE
+Starting Variational Inference
+Initial Lower Bound L = -1.49e+08
+Iteration 1| Distributions update | L = -1536.8215
+Iteration 1| Hyperparameter optimization | L = -1534.2819
+HP = 0.0365 0.00757 0.00999 -0.00925 -0.00745 -0.00565 -0.00386 -0.00206 -0.00026 0.00154 0.00334 0.00514 0.00693 0.00873 0.0105 0.0123 0.0141 0.0159 0.0177 0.0195 0.0213 0.0231 0.0249 -14.5 
+
+Iteration 2| Distributions update | L = 1124.7708
+Iteration 2| Hyperparameter optimization | L = 1124.7708
+HP = 0.0365 0.00757 0.00999 -0.00925 -0.00745 -0.00565 -0.00386 -0.00206 -0.00026 0.00154 0.00334 0.00514 0.00693 0.00873 0.0105 0.0123 0.0141 0.0159 0.0177 0.0195 0.0213 0.0231 0.0249 -14.5 
+
+Iteration 3| Distributions update | L = 2482.6859
+Iteration 3| Hyperparameter optimization | L = 2485.8519
+HP = 0.0365 0.00757 0.00999 -0.00925 -0.00745 -0.00565 -0.00386 -0.00206 -0.00026 0.00154 0.00334 0.00514 0.00693 0.00873 0.0105 0.0123 0.0141 0.0159 0.0177 0.0195 0.0213 0.0231 0.0249 -14.5 
+
+Iteration 4| Distributions update | L = 3233.2561
+Iteration 4| Hyperparameter optimization | L = 3233.2561
+HP = 0.0365 0.00757 0.00999 -0.00925 -0.00745 -0.00565 -0.00386 -0.00206 -0.00026 0.00154 0.00334 0.00514 0.00693 0.00873 0.0105 0.0123 0.0141 0.0159 0.0177 0.0195 0.0213 0.0231 0.0249 -14.5 
+
+Iteration 5| Distributions update | L = 3583.9708
+Iteration 5| Hyperparameter optimization | L = 3583.9708
+HP = 0.0365 0.00757 0.00999 -0.00925 -0.00745 -0.00565 -0.00386 -0.00206 -0.00026 0.00154 0.00334 0.00514 0.00693 0.00873 0.0105 0.0123 0.0141 0.0159 0.0177 0.0195 0.0213 0.0231 0.0249 -14.5 
+
+Iteration 6| Distributions update | L = 7163.4719
+Iteration 6| Hyperparameter optimization | L = 7163.4719
+HP = 0.0365 0.00757 0.00999 -0.00925 -0.00745 -0.00565 -0.00386 -0.00206 -0.00026 0.00154 0.00334 0.00514 0.00693 0.00873 0.0105 0.0123 0.0141 0.0159 0.0177 0.0195 0.0213 0.0231 0.0249 -14.5 
+
+Iteration 7| Distributions update | L = 7550.9557
+Iteration 7| Hyperparameter optimization | L = 7550.9557
+HP = 0.0365 0.00757 0.00999 -0.00925 -0.00745 -0.00565 -0.00386 -0.00206 -0.00026 0.00154 0.00334 0.00514 0.00693 0.00873 0.0105 0.0123 0.0141 0.0159 0.0177 0.0195 0.0213 0.0231 0.0249 -14.5 
+
+Iteration 8| Distributions update | L = 7808.5452
+Iteration 8| Hyperparameter optimization | L = 7808.5452
+HP = 0.0365 0.00757 0.00999 -0.00925 -0.00745 -0.00565 -0.00386 -0.00206 -0.00026 0.00154 0.00334 0.00514 0.00693 0.00873 0.0105 0.0123 0.0141 0.0159 0.0177 0.0195 0.0213 0.0231 0.0249 -14.5 
+
+Iteration 9| Distributions update | L = 8044.6066
+Iteration 9| Hyperparameter optimization | L = 8044.6066
+HP = 0.0365 0.00757 0.00999 -0.00925 -0.00745 -0.00565 -0.00386 -0.00206 -0.00026 0.00154 0.00334 0.00514 0.00693 0.00873 0.0105 0.0123 0.0141 0.0159 0.0177 0.0195 0.0213 0.0231 0.0249 -14.5 
+
+Iteration 10| Distributions update | L = 8151.9819
+Iteration 10| Hyperparameter optimization | L = 8151.9819
+HP = 0.0365 0.00757 0.00999 -0.00925 -0.00745 -0.00565 -0.00386 -0.00206 -0.00026 0.00154 0.00334 0.00514 0.00693 0.00873 0.0105 0.0123 0.0141 0.0159 0.0177 0.0195 0.0213 0.0231 0.0249 -14.5 
+
+Iteration 11| Distributions update | L = 8334.5406
+Iteration 11| Hyperparameter optimization | L = 8334.6025
+HP = 0.0365 0.00757 0.00999 -0.00925 -0.00745 -0.00565 -0.00386 -0.00206 -0.00026 0.00154 0.00334 0.00514 0.00693 0.00873 0.0105 0.0123 0.0141 0.0159 0.0177 0.0195 0.0213 0.0231 0.0249 -14.5 
+
+Iteration 12| Distributions update | L = 8505.2121
+Iteration 12| Hyperparameter optimization | L = 8505.2121
+HP = 0.0365 0.00757 0.00999 -0.00925 -0.00745 -0.00565 -0.00386 -0.00206 -0.00026 0.00154 0.00334 0.00514 0.00693 0.00873 0.0105 0.0123 0.0141 0.0159 0.0177 0.0195 0.0213 0.0231 0.0249 -14.5 
+
+Iteration 13| Distributions update | L = 8659.1186
+Iteration 13| Hyperparameter optimization | L = 8659.1186
+HP = 0.0365 0.00757 0.00999 -0.00925 -0.00745 -0.00565 -0.00386 -0.00206 -0.00026 0.00154 0.00334 0.00514 0.00693 0.00873 0.0105 0.0123 0.0141 0.0159 0.0177 0.0195 0.0213 0.0231 0.0249 -14.5 
+
+Iteration 14| Distributions update | L = 8805.5149
+Iteration 14| Hyperparameter optimization | L = 8807.7248
+HP = 0.0365 0.00757 0.00999 -0.00925 -0.00745 -0.00565 -0.00386 -0.00206 -0.00026 0.00154 0.00334 0.00514 0.00693 0.00873 0.0105 0.0123 0.0141 0.0159 0.0177 0.0195 0.0213 0.0231 0.0249 -14.5 
+
+Iteration 15| Distributions update | L = 8948.9137
+Iteration 15| Hyperparameter optimization | L = 8948.9137
+HP = 0.0365 0.00757 0.00999 -0.00925 -0.00745 -0.00565 -0.00386 -0.00206 -0.00026 0.00154 0.00334 0.00514 0.00693 0.00873 0.0105 0.0123 0.0141 0.0159 0.0177 0.0195 0.0213 0.0231 0.0249 -14.5 
+
+Iteration 16| Distributions update | L = 9125.357
+Iteration 16| Hyperparameter optimization | L = 9125.357
+HP = 0.0365 0.00757 0.00999 -0.00925 -0.00745 -0.00565 -0.00386 -0.00206 -0.00026 0.00154 0.00334 0.00514 0.00693 0.00873 0.0105 0.0123 0.0141 0.0159 0.0177 0.0195 0.0213 0.0231 0.0249 -14.5 
+
+Iteration 17| Distributions update | L = 9183.5188
+Iteration 17| Hyperparameter optimization | L = 9183.5188
+HP = 0.0365 0.00757 0.00999 -0.00925 -0.00745 -0.00565 -0.00386 -0.00206 -0.00026 0.00154 0.00334 0.00514 0.00693 0.00873 0.0105 0.0123 0.0141 0.0159 0.0177 0.0195 0.0213 0.0231 0.0249 -14.5 
+
+Iteration 18| Distributions update | L = 10360.448
+Iteration 18| Hyperparameter optimization | L = 10360.448
+HP = 0.0365 0.00757 0.00999 -0.00925 -0.00745 -0.00565 -0.00386 -0.00206 -0.00026 0.00154 0.00334 0.00514 0.00693 0.00873 0.0105 0.0123 0.0141 0.0159 0.0177 0.0195 0.0213 0.0231 0.0249 -14.5 
+
+Iteration 19| Distributions update | L = 11709.175
+Iteration 19| Hyperparameter optimization | L = 11709.175
+HP = 0.0365 0.00757 0.00999 -0.00925 -0.00745 -0.00565 -0.00386 -0.00206 -0.00026 0.00154 0.00334 0.00514 0.00693 0.00873 0.0105 0.0123 0.0141 0.0159 0.0177 0.0195 0.0213 0.0231 0.0249 -14.5 
+
+Iteration 20| Distributions update | L = 11725.763
+Iteration 20| Hyperparameter optimization | L = 11725.763
+HP = 0.0365 0.00757 0.00999 -0.00925 -0.00745 -0.00565 -0.00386 -0.00206 -0.00026 0.00154 0.00334 0.00514 0.00693 0.00873 0.0105 0.0123 0.0141 0.0159 0.0177 0.0195 0.0213 0.0231 0.0249 -14.5 
+
+Starting Variational Inference
+Initial Lower Bound L = -3.23e+08
+Iteration 1| Distributions update | L = 9578.711
+Iteration 1| Hyperparameter optimization | L = 9578.711
+HP = 0.0365 0.0077 0.00999 -0.00867 -0.00694 -0.00522 -0.00349 -0.00176 -3.63e-05 0.00169 0.00342 0.00514 0.00687 0.0086 0.0103 0.0121 0.0138 0.0155 0.0172 0.019 0.0207 0.0224 0.0241 -14.6 
+
+Iteration 2| Distributions update | L = 13798.47
+Iteration 2| Hyperparameter optimization | L = 13798.47
+HP = 0.0365 0.0077 0.00999 -0.00867 -0.00694 -0.00522 -0.00349 -0.00176 -3.63e-05 0.00169 0.00342 0.00514 0.00687 0.0086 0.0103 0.0121 0.0138 0.0155 0.0172 0.019 0.0207 0.0224 0.0241 -14.6 
+
+Iteration 3| Distributions update | L = 14464.465
+Iteration 3| Hyperparameter optimization | L = 14470.492
+HP = 0.0365 0.0077 0.00999 -0.00867 -0.00694 -0.00522 -0.00349 -0.00176 -3.63e-05 0.00169 0.00342 0.00514 0.00687 0.0086 0.0103 0.0121 0.0138 0.0155 0.0172 0.019 0.0207 0.0224 0.0241 -14.6 
+
+Iteration 4| Distributions update | L = 15274.843
+Iteration 4| Hyperparameter optimization | L = 15274.843
+HP = 0.0365 0.0077 0.00999 -0.00867 -0.00694 -0.00522 -0.00349 -0.00176 -3.63e-05 0.00169 0.00342 0.00514 0.00687 0.0086 0.0103 0.0121 0.0138 0.0155 0.0172 0.019 0.0207 0.0224 0.0241 -14.6 
+
+Iteration 5| Distributions update | L = 15797.961
+Iteration 5| Hyperparameter optimization | L = 15797.961
+HP = 0.0365 0.0077 0.00999 -0.00867 -0.00694 -0.00522 -0.00349 -0.00176 -3.63e-05 0.00169 0.00342 0.00514 0.00687 0.0086 0.0103 0.0121 0.0138 0.0155 0.0172 0.019 0.0207 0.0224 0.0241 -14.6 
+
+Iteration 6| Distributions update | L = 16671.908
+Iteration 6| Hyperparameter optimization | L = 16671.908
+HP = 0.0365 0.0077 0.00999 -0.00867 -0.00694 -0.00522 -0.00349 -0.00176 -3.63e-05 0.00169 0.00342 0.00514 0.00687 0.0086 0.0103 0.0121 0.0138 0.0155 0.0172 0.019 0.0207 0.0224 0.0241 -14.6 
+
+Iteration 7| Distributions update | L = 17238.203
+Iteration 7| Hyperparameter optimization | L = 17238.203
+HP = 0.0365 0.0077 0.00999 -0.00867 -0.00694 -0.00522 -0.00349 -0.00176 -3.63e-05 0.00169 0.00342 0.00514 0.00687 0.0086 0.0103 0.0121 0.0138 0.0155 0.0172 0.019 0.0207 0.0224 0.0241 -14.6 
+
+Iteration 8| Distributions update | L = 17373.972
+Iteration 8| Hyperparameter optimization | L = 17373.972
+HP = 0.0365 0.0077 0.00999 -0.00867 -0.00694 -0.00522 -0.00349 -0.00176 -3.63e-05 0.00169 0.00342 0.00514 0.00687 0.0086 0.0103 0.0121 0.0138 0.0155 0.0172 0.019 0.0207 0.0224 0.0241 -14.6 
+
+Iteration 9| Distributions update | L = 17581.128
+Iteration 9| Hyperparameter optimization | L = 17581.128
+HP = 0.0365 0.0077 0.00999 -0.00867 -0.00694 -0.00522 -0.00349 -0.00176 -3.63e-05 0.00169 0.00342 0.00514 0.00687 0.0086 0.0103 0.0121 0.0138 0.0155 0.0172 0.019 0.0207 0.0224 0.0241 -14.6 
+
+Iteration 10| Distributions update | L = 17795.396
+Iteration 10| Hyperparameter optimization | L = 17795.396
+HP = 0.0365 0.0077 0.00999 -0.00867 -0.00694 -0.00522 -0.00349 -0.00176 -3.63e-05 0.00169 0.00342 0.00514 0.00687 0.0086 0.0103 0.0121 0.0138 0.0155 0.0172 0.019 0.0207 0.0224 0.0241 -14.6 
+
+Iteration 11| Distributions update | L = 18413.653
+Iteration 11| Hyperparameter optimization | L = 18413.653
+HP = 0.0365 0.0077 0.00999 -0.00867 -0.00694 -0.00522 -0.00349 -0.00176 -3.63e-05 0.00169 0.00342 0.00514 0.00687 0.0086 0.0103 0.0121 0.0138 0.0155 0.0172 0.019 0.0207 0.0224 0.0241 -14.6 
+
+Iteration 12| Distributions update | L = 18527.022
+Iteration 12| Hyperparameter optimization | L = 18527.022
+HP = 0.0365 0.0077 0.00999 -0.00867 -0.00694 -0.00522 -0.00349 -0.00176 -3.63e-05 0.00169 0.00342 0.00514 0.00687 0.0086 0.0103 0.0121 0.0138 0.0155 0.0172 0.019 0.0207 0.0224 0.0241 -14.6 
+
+Iteration 13| Distributions update | L = 20688.956
+Iteration 13| Hyperparameter optimization | L = 20688.956
+HP = 0.0365 0.0077 0.00999 -0.00867 -0.00694 -0.00522 -0.00349 -0.00176 -3.63e-05 0.00169 0.00342 0.00514 0.00687 0.0086 0.0103 0.0121 0.0138 0.0155 0.0172 0.019 0.0207 0.0224 0.0241 -14.6 
+
+Iteration 14| Distributions update | L = 20722.491
+Iteration 14| Hyperparameter optimization | L = 20722.491
+HP = 0.0365 0.0077 0.00999 -0.00867 -0.00694 -0.00522 -0.00349 -0.00176 -3.63e-05 0.00169 0.00342 0.00514 0.00687 0.0086 0.0103 0.0121 0.0138 0.0155 0.0172 0.019 0.0207 0.0224 0.0241 -14.6 
+
+Iteration 15| Distributions update | L = 20734.607
+Iteration 15| Hyperparameter optimization | L = 20734.607
+HP = 0.0365 0.0077 0.00999 -0.00867 -0.00694 -0.00522 -0.00349 -0.00176 -3.63e-05 0.00169 0.00342 0.00514 0.00687 0.0086 0.0103 0.0121 0.0138 0.0155 0.0172 0.019 0.0207 0.0224 0.0241 -14.6 
+
+Iteration 16| Distributions update | L = 20755.071
+Iteration 16| Hyperparameter optimization | L = 20755.071
+HP = 0.0365 0.0077 0.00999 -0.00867 -0.00694 -0.00522 -0.00349 -0.00176 -3.63e-05 0.00169 0.00342 0.00514 0.00687 0.0086 0.0103 0.0121 0.0138 0.0155 0.0172 0.019 0.0207 0.0224 0.0241 -14.6 
+
+Iteration 17| Distributions update | L = 20805.726
+Iteration 17| Hyperparameter optimization | L = 20805.726
+HP = 0.0365 0.0077 0.00999 -0.00867 -0.00694 -0.00522 -0.00349 -0.00176 -3.63e-05 0.00169 0.00342 0.00514 0.00687 0.0086 0.0103 0.0121 0.0138 0.0155 0.0172 0.019 0.0207 0.0224 0.0241 -14.6 
+
+Iteration 18| Distributions update | L = 20807.512
+Iteration 18| Hyperparameter optimization | L = 20807.512
+HP = 0.0365 0.0077 0.00999 -0.00867 -0.00694 -0.00522 -0.00349 -0.00176 -3.63e-05 0.00169 0.00342 0.00514 0.00687 0.0086 0.0103 0.0121 0.0138 0.0155 0.0172 0.019 0.0207 0.0224 0.0241 -14.6 
+
+Iteration 19| Distributions update | L = 21988.034
+Iteration 19| Hyperparameter optimization | L = 21988.034
+HP = 0.0365 0.0077 0.00999 -0.00867 -0.00694 -0.00522 -0.00349 -0.00176 -3.63e-05 0.00169 0.00342 0.00514 0.00687 0.0086 0.0103 0.0121 0.0138 0.0155 0.0172 0.019 0.0207 0.0224 0.0241 -14.6 
+
+Iteration 20| Distributions update | L = 22309.616
+Iteration 20| Hyperparameter optimization | L = 22309.616
+HP = 0.0365 0.0077 0.00999 -0.00867 -0.00694 -0.00522 -0.00349 -0.00176 -3.63e-05 0.00169 0.00342 0.00514 0.00687 0.0086 0.0103 0.0121 0.0138 0.0155 0.0172 0.019 0.0207 0.0224 0.0241 -14.6 
+
+Starting Variational Inference
+Initial Lower Bound L = -3.52e+08
+Iteration 1| Distributions update | L = 13740.135
+Iteration 1| Hyperparameter optimization | L = 13756.036
+HP = 0.0365 0.0076 0.00999 -0.00977 -0.00786 -0.00594 -0.00403 -0.00211 -0.000197 0.00172 0.00363 0.00555 0.00747 0.00938 0.0113 0.0132 0.0151 0.017 0.019 0.0209 0.0228 0.0247 0.0266 -14.5 
+
+Iteration 2| Distributions update | L = 19031.329
+Iteration 2| Hyperparameter optimization | L = 19035.406
+HP = 0.0365 0.0076 0.00999 -0.00977 -0.00786 -0.00594 -0.00403 -0.00211 -0.000197 0.00172 0.00363 0.00555 0.00747 0.00938 0.0113 0.0132 0.0151 0.017 0.019 0.0209 0.0228 0.0247 0.0266 -14.5 
+
+Iteration 3| Distributions update | L = 20145.061
+Iteration 3| Hyperparameter optimization | L = 20145.061
+HP = 0.0365 0.0076 0.00999 -0.00977 -0.00786 -0.00594 -0.00403 -0.00211 -0.000197 0.00172 0.00363 0.00555 0.00747 0.00938 0.0113 0.0132 0.0151 0.017 0.019 0.0209 0.0228 0.0247 0.0266 -14.5 
+
+Iteration 4| Distributions update | L = 20732.929
+Iteration 4| Hyperparameter optimization | L = 20745.09
+HP = 0.0365 0.0076 0.00999 -0.00977 -0.00786 -0.00594 -0.00403 -0.00211 -0.000197 0.00172 0.00363 0.00555 0.00747 0.00938 0.0113 0.0132 0.0151 0.017 0.019 0.0209 0.0228 0.0247 0.0266 -14.5 
+
+Iteration 5| Distributions update | L = 24290.405
+Iteration 5| Hyperparameter optimization | L = 24290.405
+HP = 0.0365 0.0076 0.00999 -0.00977 -0.00786 -0.00594 -0.00403 -0.00211 -0.000197 0.00172 0.00363 0.00555 0.00747 0.00938 0.0113 0.0132 0.0151 0.017 0.019 0.0209 0.0228 0.0247 0.0266 -14.5 
+
+Iteration 6| Distributions update | L = 24797.064
+Iteration 6| Hyperparameter optimization | L = 24797.064
+HP = 0.0365 0.0076 0.00999 -0.00977 -0.00786 -0.00594 -0.00403 -0.00211 -0.000197 0.00172 0.00363 0.00555 0.00747 0.00938 0.0113 0.0132 0.0151 0.017 0.019 0.0209 0.0228 0.0247 0.0266 -14.5 
+
+Iteration 7| Distributions update | L = 25029.924
+Iteration 7| Hyperparameter optimization | L = 25029.924
+HP = 0.0365 0.0076 0.00999 -0.00977 -0.00786 -0.00594 -0.00403 -0.00211 -0.000197 0.00172 0.00363 0.00555 0.00747 0.00938 0.0113 0.0132 0.0151 0.017 0.019 0.0209 0.0228 0.0247 0.0266 -14.5 
+
+Iteration 8| Distributions update | L = 25241.827
+Iteration 8| Hyperparameter optimization | L = 25241.827
+HP = 0.0365 0.0076 0.00999 -0.00977 -0.00786 -0.00594 -0.00403 -0.00211 -0.000197 0.00172 0.00363 0.00555 0.00747 0.00938 0.0113 0.0132 0.0151 0.017 0.019 0.0209 0.0228 0.0247 0.0266 -14.5 
+
+Iteration 9| Distributions update | L = 25382.656
+Iteration 9| Hyperparameter optimization | L = 25382.656
+HP = 0.0365 0.0076 0.00999 -0.00977 -0.00786 -0.00594 -0.00403 -0.00211 -0.000197 0.00172 0.00363 0.00555 0.00747 0.00938 0.0113 0.0132 0.0151 0.017 0.019 0.0209 0.0228 0.0247 0.0266 -14.5 
+
+Iteration 10| Distributions update | L = 25957.912
+Iteration 10| Hyperparameter optimization | L = 25957.912
+HP = 0.0365 0.0076 0.00999 -0.00977 -0.00786 -0.00594 -0.00403 -0.00211 -0.000197 0.00172 0.00363 0.00555 0.00747 0.00938 0.0113 0.0132 0.0151 0.017 0.019 0.0209 0.0228 0.0247 0.0266 -14.5 
+
+Iteration 11| Distributions update | L = 26481.005
+Iteration 11| Hyperparameter optimization | L = 26481.005
+HP = 0.0365 0.0076 0.00999 -0.00977 -0.00786 -0.00594 -0.00403 -0.00211 -0.000197 0.00172 0.00363 0.00555 0.00747 0.00938 0.0113 0.0132 0.0151 0.017 0.019 0.0209 0.0228 0.0247 0.0266 -14.5 
+
+Iteration 12| Distributions update | L = 26811.611
+Iteration 12| Hyperparameter optimization | L = 26811.611
+HP = 0.0365 0.0076 0.00999 -0.00977 -0.00786 -0.00594 -0.00403 -0.00211 -0.000197 0.00172 0.00363 0.00555 0.00747 0.00938 0.0113 0.0132 0.0151 0.017 0.019 0.0209 0.0228 0.0247 0.0266 -14.5 
+
+Iteration 13| Distributions update | L = 26916.91
+Iteration 13| Hyperparameter optimization | L = 26916.91
+HP = 0.0365 0.0076 0.00999 -0.00977 -0.00786 -0.00594 -0.00403 -0.00211 -0.000197 0.00172 0.00363 0.00555 0.00747 0.00938 0.0113 0.0132 0.0151 0.017 0.019 0.0209 0.0228 0.0247 0.0266 -14.5 
+
+Iteration 14| Distributions update | L = 26981.736
+Iteration 14| Hyperparameter optimization | L = 26981.736
+HP = 0.0365 0.0076 0.00999 -0.00977 -0.00786 -0.00594 -0.00403 -0.00211 -0.000197 0.00172 0.00363 0.00555 0.00747 0.00938 0.0113 0.0132 0.0151 0.017 0.019 0.0209 0.0228 0.0247 0.0266 -14.5 
+
+Iteration 15| Distributions update | L = 27060.77
+Iteration 15| Hyperparameter optimization | L = 27060.77
+HP = 0.0365 0.0076 0.00999 -0.00977 -0.00786 -0.00594 -0.00403 -0.00211 -0.000197 0.00172 0.00363 0.00555 0.00747 0.00938 0.0113 0.0132 0.0151 0.017 0.019 0.0209 0.0228 0.0247 0.0266 -14.5 
+
+Iteration 16| Distributions update | L = 27102.435
+Iteration 16| Hyperparameter optimization | L = 27102.435
+HP = 0.0365 0.0076 0.00999 -0.00977 -0.00786 -0.00594 -0.00403 -0.00211 -0.000197 0.00172 0.00363 0.00555 0.00747 0.00938 0.0113 0.0132 0.0151 0.017 0.019 0.0209 0.0228 0.0247 0.0266 -14.5 
+
+Iteration 17| Distributions update | L = 27748.681
+Iteration 17| Hyperparameter optimization | L = 27748.681
+HP = 0.0365 0.0076 0.00999 -0.00977 -0.00786 -0.00594 -0.00403 -0.00211 -0.000197 0.00172 0.00363 0.00555 0.00747 0.00938 0.0113 0.0132 0.0151 0.017 0.019 0.0209 0.0228 0.0247 0.0266 -14.5 
+
+Iteration 18| Distributions update | L = 27859.743
+Iteration 18| Hyperparameter optimization | L = 27859.743
+HP = 0.0365 0.0076 0.00999 -0.00977 -0.00786 -0.00594 -0.00403 -0.00211 -0.000197 0.00172 0.00363 0.00555 0.00747 0.00938 0.0113 0.0132 0.0151 0.017 0.019 0.0209 0.0228 0.0247 0.0266 -14.5 
+
+Iteration 19| Distributions update | L = 27862.407
+Iteration 19| Hyperparameter optimization | L = 27862.407
+HP = 0.0365 0.0076 0.00999 -0.00977 -0.00786 -0.00594 -0.00403 -0.00211 -0.000197 0.00172 0.00363 0.00555 0.00747 0.00938 0.0113 0.0132 0.0151 0.017 0.019 0.0209 0.0228 0.0247 0.0266 -14.5 
+
+Iteration 20| Distributions update | L = 27905.504
+Iteration 20| Hyperparameter optimization | L = 27905.504
+HP = 0.0365 0.0076 0.00999 -0.00977 -0.00786 -0.00594 -0.00403 -0.00211 -0.000197 0.00172 0.00363 0.00555 0.00747 0.00938 0.0113 0.0132 0.0151 0.017 0.019 0.0209 0.0228 0.0247 0.0266 -14.5 
+
+Starting Variational Inference
+Initial Lower Bound L = -3.82e+08
+Iteration 1| Distributions update | L = 6986.5197
+Iteration 1| Hyperparameter optimization | L = 7065.596
+HP = 0.0365 0.00758 0.00999 -0.0106 -0.00899 -0.00734 -0.00569 -0.00404 -0.00239 -0.000743 0.000905 0.00255 0.0042 0.00585 0.0075 0.00915 0.0108 0.0124 0.0141 0.0157 0.0174 0.019 0.0207 -14.5 
+
+Iteration 2| Distributions update | L = 9283.3883
+Iteration 2| Hyperparameter optimization | L = 9283.3883
+HP = 0.0365 0.00758 0.00999 -0.0106 -0.00899 -0.00734 -0.00569 -0.00404 -0.00239 -0.000743 0.000905 0.00255 0.0042 0.00585 0.0075 0.00915 0.0108 0.0124 0.0141 0.0157 0.0174 0.019 0.0207 -14.5 
+
+Iteration 3| Distributions update | L = 13093.62
+Iteration 3| Hyperparameter optimization | L = 13093.675
+HP = 0.0365 0.00758 0.00999 -0.0106 -0.00899 -0.00734 -0.00569 -0.00404 -0.00239 -0.000743 0.000905 0.00255 0.0042 0.00585 0.0075 0.00915 0.0108 0.0124 0.0141 0.0157 0.0174 0.019 0.0207 -14.5 
+
+Iteration 4| Distributions update | L = 16852.525
+Iteration 4| Hyperparameter optimization | L = 16853.13
+HP = 0.0365 0.00758 0.00999 -0.0106 -0.00899 -0.00734 -0.00569 -0.00404 -0.00239 -0.000743 0.000905 0.00255 0.0042 0.00585 0.0075 0.00915 0.0108 0.0124 0.0141 0.0157 0.0174 0.019 0.0207 -14.5 
+
+Iteration 5| Distributions update | L = 18559.384
+Iteration 5| Hyperparameter optimization | L = 18566.218
+HP = 0.0365 0.00758 0.00999 -0.0106 -0.00899 -0.00734 -0.00569 -0.00404 -0.00239 -0.000743 0.000905 0.00255 0.0042 0.00585 0.0075 0.00915 0.0108 0.0124 0.0141 0.0157 0.0174 0.019 0.0207 -14.5 
+
+Iteration 6| Distributions update | L = 18949.474
+Iteration 6| Hyperparameter optimization | L = 18949.474
+HP = 0.0365 0.00758 0.00999 -0.0106 -0.00899 -0.00734 -0.00569 -0.00404 -0.00239 -0.000743 0.000905 0.00255 0.0042 0.00585 0.0075 0.00915 0.0108 0.0124 0.0141 0.0157 0.0174 0.019 0.0207 -14.5 
+
+Iteration 7| Distributions update | L = 21421.924
+Iteration 7| Hyperparameter optimization | L = 21421.924
+HP = 0.0365 0.00758 0.00999 -0.0106 -0.00899 -0.00734 -0.00569 -0.00404 -0.00239 -0.000743 0.000905 0.00255 0.0042 0.00585 0.0075 0.00915 0.0108 0.0124 0.0141 0.0157 0.0174 0.019 0.0207 -14.5 
+
+Iteration 8| Distributions update | L = 23562.169
+Iteration 8| Hyperparameter optimization | L = 23562.169
+HP = 0.0365 0.00758 0.00999 -0.0106 -0.00899 -0.00734 -0.00569 -0.00404 -0.00239 -0.000743 0.000905 0.00255 0.0042 0.00585 0.0075 0.00915 0.0108 0.0124 0.0141 0.0157 0.0174 0.019 0.0207 -14.5 
+
+Iteration 9| Distributions update | L = 25189.199
+Iteration 9| Hyperparameter optimization | L = 25189.199
+HP = 0.0365 0.00758 0.00999 -0.0106 -0.00899 -0.00734 -0.00569 -0.00404 -0.00239 -0.000743 0.000905 0.00255 0.0042 0.00585 0.0075 0.00915 0.0108 0.0124 0.0141 0.0157 0.0174 0.019 0.0207 -14.5 
+
+Iteration 10| Distributions update | L = 25740.015
+Iteration 10| Hyperparameter optimization | L = 25740.015
+HP = 0.0365 0.00758 0.00999 -0.0106 -0.00899 -0.00734 -0.00569 -0.00404 -0.00239 -0.000743 0.000905 0.00255 0.0042 0.00585 0.0075 0.00915 0.0108 0.0124 0.0141 0.0157 0.0174 0.019 0.0207 -14.5 
+
+Iteration 11| Distributions update | L = 26178.566
+Iteration 11| Hyperparameter optimization | L = 26178.566
+HP = 0.0365 0.00758 0.00999 -0.0106 -0.00899 -0.00734 -0.00569 -0.00404 -0.00239 -0.000743 0.000905 0.00255 0.0042 0.00585 0.0075 0.00915 0.0108 0.0124 0.0141 0.0157 0.0174 0.019 0.0207 -14.5 
+
+Iteration 12| Distributions update | L = 26690.347
+Iteration 12| Hyperparameter optimization | L = 26691.777
+HP = 0.0365 0.00758 0.00999 -0.0106 -0.00899 -0.00734 -0.00569 -0.00404 -0.00239 -0.000743 0.000905 0.00255 0.0042 0.00585 0.0075 0.00915 0.0108 0.0124 0.0141 0.0157 0.0174 0.019 0.0207 -14.5 
+
+Iteration 13| Distributions update | L = 26955.953
+Iteration 13| Hyperparameter optimization | L = 26955.953
+HP = 0.0365 0.00758 0.00999 -0.0106 -0.00899 -0.00734 -0.00569 -0.00404 -0.00239 -0.000743 0.000905 0.00255 0.0042 0.00585 0.0075 0.00915 0.0108 0.0124 0.0141 0.0157 0.0174 0.019 0.0207 -14.5 
+
+Iteration 14| Distributions update | L = 31151.762
+Iteration 14| Hyperparameter optimization | L = 31151.762
+HP = 0.0365 0.00758 0.00999 -0.0106 -0.00899 -0.00734 -0.00569 -0.00404 -0.00239 -0.000743 0.000905 0.00255 0.0042 0.00585 0.0075 0.00915 0.0108 0.0124 0.0141 0.0157 0.0174 0.019 0.0207 -14.5 
+
+Iteration 15| Distributions update | L = 32843.63
+Iteration 15| Hyperparameter optimization | L = 32843.63
+HP = 0.0365 0.00758 0.00999 -0.0106 -0.00899 -0.00734 -0.00569 -0.00404 -0.00239 -0.000743 0.000905 0.00255 0.0042 0.00585 0.0075 0.00915 0.0108 0.0124 0.0141 0.0157 0.0174 0.019 0.0207 -14.5 
+
+Iteration 16| Distributions update | L = 33066.671
+Iteration 16| Hyperparameter optimization | L = 33066.671
+HP = 0.0365 0.00758 0.00999 -0.0106 -0.00899 -0.00734 -0.00569 -0.00404 -0.00239 -0.000743 0.000905 0.00255 0.0042 0.00585 0.0075 0.00915 0.0108 0.0124 0.0141 0.0157 0.0174 0.019 0.0207 -14.5 
+
+Iteration 17| Distributions update | L = 33066.848
+Iteration 17| Hyperparameter optimization | L = 33066.848
+HP = 0.0365 0.00758 0.00999 -0.0106 -0.00899 -0.00734 -0.00569 -0.00404 -0.00239 -0.000743 0.000905 0.00255 0.0042 0.00585 0.0075 0.00915 0.0108 0.0124 0.0141 0.0157 0.0174 0.019 0.0207 -14.5 
+
+Iteration 18| Distributions update | L = 33066.848
+Iteration 18| Hyperparameter optimization | L = 33066.848
+HP = 0.0365 0.00758 0.00999 -0.0106 -0.00899 -0.00734 -0.00569 -0.00404 -0.00239 -0.000743 0.000905 0.00255 0.0042 0.00585 0.0075 0.00915 0.0108 0.0124 0.0141 0.0157 0.0174 0.019 0.0207 -14.5 
+
+Iteration 19| Distributions update | L = 33084.022
+Iteration 19| Hyperparameter optimization | L = 33084.022
+HP = 0.0365 0.00758 0.00999 -0.0106 -0.00899 -0.00734 -0.00569 -0.00404 -0.00239 -0.000743 0.000905 0.00255 0.0042 0.00585 0.0075 0.00915 0.0108 0.0124 0.0141 0.0157 0.0174 0.019 0.0207 -14.5 
+
+Iteration 20| Distributions update | L = 33098.205
+Iteration 20| Hyperparameter optimization | L = 33098.205
+HP = 0.0365 0.00758 0.00999 -0.0106 -0.00899 -0.00734 -0.00569 -0.00404 -0.00239 -0.000743 0.000905 0.00255 0.0042 0.00585 0.0075 0.00915 0.0108 0.0124 0.0141 0.0157 0.0174 0.019 0.0207 -14.5 
+
+Starting Variational Inference
+Initial Lower Bound L = -5.22e+08
+Iteration 1| Distributions update | L = -19419.385
+Iteration 1| Hyperparameter optimization | L = -19364.804
+HP = 0.0365 0.00778 0.00999 -0.0102 -0.00847 -0.00678 -0.00508 -0.00339 -0.0017 -1.16e-05 0.00168 0.00337 0.00506 0.00675 0.00844 0.0101 0.0118 0.0135 0.0152 0.0169 0.0186 0.0203 0.022 -14.7 
+
+Iteration 2| Distributions update | L = 25248.48
+Iteration 2| Hyperparameter optimization | L = 25248.48
+HP = 0.0365 0.00778 0.00999 -0.0102 -0.00847 -0.00678 -0.00508 -0.00339 -0.0017 -1.16e-05 0.00168 0.00337 0.00506 0.00675 0.00844 0.0101 0.0118 0.0135 0.0152 0.0169 0.0186 0.0203 0.022 -14.7 
+
+Iteration 3| Distributions update | L = 31161.758
+Iteration 3| Hyperparameter optimization | L = 31161.758
+HP = 0.0365 0.00778 0.00999 -0.0102 -0.00847 -0.00678 -0.00508 -0.00339 -0.0017 -1.16e-05 0.00168 0.00337 0.00506 0.00675 0.00844 0.0101 0.0118 0.0135 0.0152 0.0169 0.0186 0.0203 0.022 -14.7 
+
+Iteration 4| Distributions update | L = 32470.025
+Iteration 4| Hyperparameter optimization | L = 32470.025
+HP = 0.0365 0.00778 0.00999 -0.0102 -0.00847 -0.00678 -0.00508 -0.00339 -0.0017 -1.16e-05 0.00168 0.00337 0.00506 0.00675 0.00844 0.0101 0.0118 0.0135 0.0152 0.0169 0.0186 0.0203 0.022 -14.7 
+
+Iteration 5| Distributions update | L = 32560.391
+Iteration 5| Hyperparameter optimization | L = 32560.391
+HP = 0.0365 0.00778 0.00999 -0.0102 -0.00847 -0.00678 -0.00508 -0.00339 -0.0017 -1.16e-05 0.00168 0.00337 0.00506 0.00675 0.00844 0.0101 0.0118 0.0135 0.0152 0.0169 0.0186 0.0203 0.022 -14.7 
+
+Iteration 6| Distributions update | L = 32625.67
+Iteration 6| Hyperparameter optimization | L = 32625.67
+HP = 0.0365 0.00778 0.00999 -0.0102 -0.00847 -0.00678 -0.00508 -0.00339 -0.0017 -1.16e-05 0.00168 0.00337 0.00506 0.00675 0.00844 0.0101 0.0118 0.0135 0.0152 0.0169 0.0186 0.0203 0.022 -14.7 
+
+Iteration 7| Distributions update | L = 32729.928
+Iteration 7| Hyperparameter optimization | L = 32729.928
+HP = 0.0365 0.00778 0.00999 -0.0102 -0.00847 -0.00678 -0.00508 -0.00339 -0.0017 -1.16e-05 0.00168 0.00337 0.00506 0.00675 0.00844 0.0101 0.0118 0.0135 0.0152 0.0169 0.0186 0.0203 0.022 -14.7 
+
+Iteration 8| Distributions update | L = 33233.409
+Iteration 8| Hyperparameter optimization | L = 33233.409
+HP = 0.0365 0.00778 0.00999 -0.0102 -0.00847 -0.00678 -0.00508 -0.00339 -0.0017 -1.16e-05 0.00168 0.00337 0.00506 0.00675 0.00844 0.0101 0.0118 0.0135 0.0152 0.0169 0.0186 0.0203 0.022 -14.7 
+
+Iteration 9| Distributions update | L = 33325.576
+Iteration 9| Hyperparameter optimization | L = 33326.587
+HP = 0.0365 0.00778 0.00999 -0.0102 -0.00847 -0.00678 -0.00508 -0.00339 -0.0017 -1.16e-05 0.00168 0.00337 0.00506 0.00675 0.00844 0.0101 0.0118 0.0135 0.0152 0.0169 0.0186 0.0203 0.022 -14.7 
+
+Iteration 10| Distributions update | L = 33612.051
+Iteration 10| Hyperparameter optimization | L = 33612.051
+HP = 0.0365 0.00778 0.00999 -0.0102 -0.00847 -0.00678 -0.00508 -0.00339 -0.0017 -1.16e-05 0.00168 0.00337 0.00506 0.00675 0.00844 0.0101 0.0118 0.0135 0.0152 0.0169 0.0186 0.0203 0.022 -14.7 
+
+Iteration 11| Distributions update | L = 33806.63
+Iteration 11| Hyperparameter optimization | L = 33806.65
+HP = 0.0365 0.00778 0.00999 -0.0102 -0.00847 -0.00678 -0.00508 -0.00339 -0.0017 -1.16e-05 0.00168 0.00337 0.00506 0.00675 0.00844 0.0101 0.0118 0.0135 0.0152 0.0169 0.0186 0.0203 0.022 -14.7 
+
+Iteration 12| Distributions update | L = 33812.55
+Iteration 12| Hyperparameter optimization | L = 33814.009
+HP = 0.0365 0.00778 0.00999 -0.0102 -0.00847 -0.00678 -0.00508 -0.00339 -0.0017 -1.16e-05 0.00168 0.00337 0.00506 0.00675 0.00844 0.0101 0.0118 0.0135 0.0152 0.0169 0.0186 0.0203 0.022 -14.7 
+
+Iteration 13| Distributions update | L = 33888.05
+Iteration 13| Hyperparameter optimization | L = 33888.05
+HP = 0.0365 0.00778 0.00999 -0.0102 -0.00847 -0.00678 -0.00508 -0.00339 -0.0017 -1.16e-05 0.00168 0.00337 0.00506 0.00675 0.00844 0.0101 0.0118 0.0135 0.0152 0.0169 0.0186 0.0203 0.022 -14.7 
+
+Iteration 14| Distributions update | L = 33925.663
+Iteration 14| Hyperparameter optimization | L = 33925.663
+HP = 0.0365 0.00778 0.00999 -0.0102 -0.00847 -0.00678 -0.00508 -0.00339 -0.0017 -1.16e-05 0.00168 0.00337 0.00506 0.00675 0.00844 0.0101 0.0118 0.0135 0.0152 0.0169 0.0186 0.0203 0.022 -14.7 
+
+Iteration 15| Distributions update | L = 33949.936
+Iteration 15| Hyperparameter optimization | L = 33949.936
+HP = 0.0365 0.00778 0.00999 -0.0102 -0.00847 -0.00678 -0.00508 -0.00339 -0.0017 -1.16e-05 0.00168 0.00337 0.00506 0.00675 0.00844 0.0101 0.0118 0.0135 0.0152 0.0169 0.0186 0.0203 0.022 -14.7 
+
+Iteration 16| Distributions update | L = 33949.943
+Iteration 16| Hyperparameter optimization | L = 33949.943
+HP = 0.0365 0.00778 0.00999 -0.0102 -0.00847 -0.00678 -0.00508 -0.00339 -0.0017 -1.16e-05 0.00168 0.00337 0.00506 0.00675 0.00844 0.0101 0.0118 0.0135 0.0152 0.0169 0.0186 0.0203 0.022 -14.7 
+
+Iteration 17| Distributions update | L = 33984.238
+Iteration 17| Hyperparameter optimization | L = 33984.238
+HP = 0.0365 0.00778 0.00999 -0.0102 -0.00847 -0.00678 -0.00508 -0.00339 -0.0017 -1.16e-05 0.00168 0.00337 0.00506 0.00675 0.00844 0.0101 0.0118 0.0135 0.0152 0.0169 0.0186 0.0203 0.022 -14.7 
+
+Iteration 18| Distributions update | L = 34026.857
+Iteration 18| Hyperparameter optimization | L = 34026.857
+HP = 0.0365 0.00778 0.00999 -0.0102 -0.00847 -0.00678 -0.00508 -0.00339 -0.0017 -1.16e-05 0.00168 0.00337 0.00506 0.00675 0.00844 0.0101 0.0118 0.0135 0.0152 0.0169 0.0186 0.0203 0.022 -14.7 
+
+Iteration 19| Distributions update | L = 34030.006
+Iteration 19| Hyperparameter optimization | L = 34030.006
+HP = 0.0365 0.00778 0.00999 -0.0102 -0.00847 -0.00678 -0.00508 -0.00339 -0.0017 -1.16e-05 0.00168 0.00337 0.00506 0.00675 0.00844 0.0101 0.0118 0.0135 0.0152 0.0169 0.0186 0.0203 0.022 -14.7 
+
+Iteration 20| Distributions update | L = 34030.006
+Iteration 20| Hyperparameter optimization | L = 34030.006
+HP = 0.0365 0.00778 0.00999 -0.0102 -0.00847 -0.00678 -0.00508 -0.00339 -0.0017 -1.16e-05 0.00168 0.00337 0.00506 0.00675 0.00844 0.0101 0.0118 0.0135 0.0152 0.0169 0.0186 0.0203 0.022 -14.7 
+
+Starting Variational Inference
+Initial Lower Bound L = -4.51e+08
+Iteration 1| Distributions update | L = 5992.1815
+Iteration 1| Hyperparameter optimization | L = 6015.0187
+HP = 0.0365 0.00777 0.00999 -0.00971 -0.00813 -0.00654 -0.00496 -0.00338 -0.0018 -0.000221 0.00136 0.00294 0.00452 0.0061 0.00768 0.00926 0.0108 0.0124 0.014 0.0156 0.0172 0.0188 0.0203 -14.7 
+
+Iteration 2| Distributions update | L = 12659.529
+Iteration 2| Hyperparameter optimization | L = 12664.3
+HP = 0.0365 0.00777 0.00999 -0.00971 -0.00813 -0.00654 -0.00496 -0.00338 -0.0018 -0.000221 0.00136 0.00294 0.00452 0.0061 0.00768 0.00926 0.0108 0.0124 0.014 0.0156 0.0172 0.0188 0.0203 -14.7 
+
+Iteration 3| Distributions update | L = 15274.968
+Iteration 3| Hyperparameter optimization | L = 15274.968
+HP = 0.0365 0.00777 0.00999 -0.00971 -0.00813 -0.00654 -0.00496 -0.00338 -0.0018 -0.000221 0.00136 0.00294 0.00452 0.0061 0.00768 0.00926 0.0108 0.0124 0.014 0.0156 0.0172 0.0188 0.0203 -14.7 
+
+Iteration 4| Distributions update | L = 16784.805
+Iteration 4| Hyperparameter optimization | L = 16791
+HP = 0.0365 0.00777 0.00999 -0.00971 -0.00813 -0.00654 -0.00496 -0.00338 -0.0018 -0.000221 0.00136 0.00294 0.00452 0.0061 0.00768 0.00926 0.0108 0.0124 0.014 0.0156 0.0172 0.0188 0.0203 -14.7 
+
+Iteration 5| Distributions update | L = 19965.89
+Iteration 5| Hyperparameter optimization | L = 19965.89
+HP = 0.0365 0.00777 0.00999 -0.00971 -0.00813 -0.00654 -0.00496 -0.00338 -0.0018 -0.000221 0.00136 0.00294 0.00452 0.0061 0.00768 0.00926 0.0108 0.0124 0.014 0.0156 0.0172 0.0188 0.0203 -14.7 
+
+Iteration 6| Distributions update | L = 20657.76
+Iteration 6| Hyperparameter optimization | L = 20657.76
+HP = 0.0365 0.00777 0.00999 -0.00971 -0.00813 -0.00654 -0.00496 -0.00338 -0.0018 -0.000221 0.00136 0.00294 0.00452 0.0061 0.00768 0.00926 0.0108 0.0124 0.014 0.0156 0.0172 0.0188 0.0203 -14.7 
+
+Iteration 7| Distributions update | L = 21909.485
+Iteration 7| Hyperparameter optimization | L = 21909.485
+HP = 0.0365 0.00777 0.00999 -0.00971 -0.00813 -0.00654 -0.00496 -0.00338 -0.0018 -0.000221 0.00136 0.00294 0.00452 0.0061 0.00768 0.00926 0.0108 0.0124 0.014 0.0156 0.0172 0.0188 0.0203 -14.7 
+
+Iteration 8| Distributions update | L = 23530.499
+Iteration 8| Hyperparameter optimization | L = 23530.499
+HP = 0.0365 0.00777 0.00999 -0.00971 -0.00813 -0.00654 -0.00496 -0.00338 -0.0018 -0.000221 0.00136 0.00294 0.00452 0.0061 0.00768 0.00926 0.0108 0.0124 0.014 0.0156 0.0172 0.0188 0.0203 -14.7 
+
+Iteration 9| Distributions update | L = 23943.208
+Iteration 9| Hyperparameter optimization | L = 23943.208
+HP = 0.0365 0.00777 0.00999 -0.00971 -0.00813 -0.00654 -0.00496 -0.00338 -0.0018 -0.000221 0.00136 0.00294 0.00452 0.0061 0.00768 0.00926 0.0108 0.0124 0.014 0.0156 0.0172 0.0188 0.0203 -14.7 
+
+Iteration 10| Distributions update | L = 24205.92
+Iteration 10| Hyperparameter optimization | L = 24205.92
+HP = 0.0365 0.00777 0.00999 -0.00971 -0.00813 -0.00654 -0.00496 -0.00338 -0.0018 -0.000221 0.00136 0.00294 0.00452 0.0061 0.00768 0.00926 0.0108 0.0124 0.014 0.0156 0.0172 0.0188 0.0203 -14.7 
+
+Iteration 11| Distributions update | L = 24923.027
+Iteration 11| Hyperparameter optimization | L = 24923.027
+HP = 0.0365 0.00777 0.00999 -0.00971 -0.00813 -0.00654 -0.00496 -0.00338 -0.0018 -0.000221 0.00136 0.00294 0.00452 0.0061 0.00768 0.00926 0.0108 0.0124 0.014 0.0156 0.0172 0.0188 0.0203 -14.7 
+
+Iteration 12| Distributions update | L = 25990.687
+Iteration 12| Hyperparameter optimization | L = 25990.687
+HP = 0.0365 0.00777 0.00999 -0.00971 -0.00813 -0.00654 -0.00496 -0.00338 -0.0018 -0.000221 0.00136 0.00294 0.00452 0.0061 0.00768 0.00926 0.0108 0.0124 0.014 0.0156 0.0172 0.0188 0.0203 -14.7 
+
+Iteration 13| Distributions update | L = 26456.838
+Iteration 13| Hyperparameter optimization | L = 26456.838
+HP = 0.0365 0.00777 0.00999 -0.00971 -0.00813 -0.00654 -0.00496 -0.00338 -0.0018 -0.000221 0.00136 0.00294 0.00452 0.0061 0.00768 0.00926 0.0108 0.0124 0.014 0.0156 0.0172 0.0188 0.0203 -14.7 
+
+Iteration 14| Distributions update | L = 26616.385
+Iteration 14| Hyperparameter optimization | L = 26616.385
+HP = 0.0365 0.00777 0.00999 -0.00971 -0.00813 -0.00654 -0.00496 -0.00338 -0.0018 -0.000221 0.00136 0.00294 0.00452 0.0061 0.00768 0.00926 0.0108 0.0124 0.014 0.0156 0.0172 0.0188 0.0203 -14.7 
+
+Iteration 15| Distributions update | L = 26760.339
+Iteration 15| Hyperparameter optimization | L = 26760.339
+HP = 0.0365 0.00777 0.00999 -0.00971 -0.00813 -0.00654 -0.00496 -0.00338 -0.0018 -0.000221 0.00136 0.00294 0.00452 0.0061 0.00768 0.00926 0.0108 0.0124 0.014 0.0156 0.0172 0.0188 0.0203 -14.7 
+
+Iteration 16| Distributions update | L = 26836.452
+Iteration 16| Hyperparameter optimization | L = 26836.452
+HP = 0.0365 0.00777 0.00999 -0.00971 -0.00813 -0.00654 -0.00496 -0.00338 -0.0018 -0.000221 0.00136 0.00294 0.00452 0.0061 0.00768 0.00926 0.0108 0.0124 0.014 0.0156 0.0172 0.0188 0.0203 -14.7 
+
+Iteration 17| Distributions update | L = 26948.723
+Iteration 17| Hyperparameter optimization | L = 26948.723
+HP = 0.0365 0.00777 0.00999 -0.00971 -0.00813 -0.00654 -0.00496 -0.00338 -0.0018 -0.000221 0.00136 0.00294 0.00452 0.0061 0.00768 0.00926 0.0108 0.0124 0.014 0.0156 0.0172 0.0188 0.0203 -14.7 
+
+Iteration 18| Distributions update | L = 27023.618
+Iteration 18| Hyperparameter optimization | L = 27023.618
+HP = 0.0365 0.00777 0.00999 -0.00971 -0.00813 -0.00654 -0.00496 -0.00338 -0.0018 -0.000221 0.00136 0.00294 0.00452 0.0061 0.00768 0.00926 0.0108 0.0124 0.014 0.0156 0.0172 0.0188 0.0203 -14.7 
+
+Iteration 19| Distributions update | L = 29306.061
+Iteration 19| Hyperparameter optimization | L = 29306.061
+HP = 0.0365 0.00777 0.00999 -0.00971 -0.00813 -0.00654 -0.00496 -0.00338 -0.0018 -0.000221 0.00136 0.00294 0.00452 0.0061 0.00768 0.00926 0.0108 0.0124 0.014 0.0156 0.0172 0.0188 0.0203 -14.7 
+
+Iteration 20| Distributions update | L = 29344.714
+Iteration 20| Hyperparameter optimization | L = 29344.714
+HP = 0.0365 0.00777 0.00999 -0.00971 -0.00813 -0.00654 -0.00496 -0.00338 -0.0018 -0.000221 0.00136 0.00294 0.00452 0.0061 0.00768 0.00926 0.0108 0.0124 0.014 0.0156 0.0172 0.0188 0.0203 -14.7 
+
+Starting Variational Inference
+Initial Lower Bound L = -2.94e+08
+Iteration 1| Distributions update | L = -10463.644
+Iteration 1| Hyperparameter optimization | L = -10449.861
+HP = 0.0365 0.00781 0.00999 -0.0088 -0.00731 -0.00582 -0.00433 -0.00283 -0.00134 0.000149 0.00164 0.00313 0.00462 0.00612 0.00761 0.0091 0.0106 0.0121 0.0136 0.0151 0.0166 0.0181 0.0195 -14.7 
+
+Iteration 2| Distributions update | L = -8208.6501
+Iteration 2| Hyperparameter optimization | L = -8208.6501
+HP = 0.0365 0.00781 0.00999 -0.0088 -0.00731 -0.00582 -0.00433 -0.00283 -0.00134 0.000149 0.00164 0.00313 0.00462 0.00612 0.00761 0.0091 0.0106 0.0121 0.0136 0.0151 0.0166 0.0181 0.0195 -14.7 
+
+Iteration 3| Distributions update | L = 9153.7361
+Iteration 3| Hyperparameter optimization | L = 9155.5781
+HP = 0.0365 0.00781 0.00999 -0.0088 -0.00731 -0.00582 -0.00433 -0.00283 -0.00134 0.000149 0.00164 0.00313 0.00462 0.00612 0.00761 0.0091 0.0106 0.0121 0.0136 0.0151 0.0166 0.0181 0.0195 -14.7 
+
+Iteration 4| Distributions update | L = 9714.1363
+Iteration 4| Hyperparameter optimization | L = 9717.2429
+HP = 0.0365 0.00781 0.00999 -0.0088 -0.00731 -0.00582 -0.00433 -0.00283 -0.00134 0.000149 0.00164 0.00313 0.00462 0.00612 0.00761 0.0091 0.0106 0.0121 0.0136 0.0151 0.0166 0.0181 0.0195 -14.7 
+
+Iteration 5| Distributions update | L = 9875.7742
+Iteration 5| Hyperparameter optimization | L = 9875.7742
+HP = 0.0365 0.00781 0.00999 -0.0088 -0.00731 -0.00582 -0.00433 -0.00283 -0.00134 0.000149 0.00164 0.00313 0.00462 0.00612 0.00761 0.0091 0.0106 0.0121 0.0136 0.0151 0.0166 0.0181 0.0195 -14.7 
+
+Iteration 6| Distributions update | L = 10137.88
+Iteration 6| Hyperparameter optimization | L = 10137.88
+HP = 0.0365 0.00781 0.00999 -0.0088 -0.00731 -0.00582 -0.00433 -0.00283 -0.00134 0.000149 0.00164 0.00313 0.00462 0.00612 0.00761 0.0091 0.0106 0.0121 0.0136 0.0151 0.0166 0.0181 0.0195 -14.7 
+
+Iteration 7| Distributions update | L = 10339.857
+Iteration 7| Hyperparameter optimization | L = 10339.857
+HP = 0.0365 0.00781 0.00999 -0.0088 -0.00731 -0.00582 -0.00433 -0.00283 -0.00134 0.000149 0.00164 0.00313 0.00462 0.00612 0.00761 0.0091 0.0106 0.0121 0.0136 0.0151 0.0166 0.0181 0.0195 -14.7 
+
+Iteration 8| Distributions update | L = 11496.225
+Iteration 8| Hyperparameter optimization | L = 11496.225
+HP = 0.0365 0.00781 0.00999 -0.0088 -0.00731 -0.00582 -0.00433 -0.00283 -0.00134 0.000149 0.00164 0.00313 0.00462 0.00612 0.00761 0.0091 0.0106 0.0121 0.0136 0.0151 0.0166 0.0181 0.0195 -14.7 
+
+Iteration 9| Distributions update | L = 12365.252
+Iteration 9| Hyperparameter optimization | L = 12365.252
+HP = 0.0365 0.00781 0.00999 -0.0088 -0.00731 -0.00582 -0.00433 -0.00283 -0.00134 0.000149 0.00164 0.00313 0.00462 0.00612 0.00761 0.0091 0.0106 0.0121 0.0136 0.0151 0.0166 0.0181 0.0195 -14.7 
+
+Iteration 10| Distributions update | L = 12752.287
+Iteration 10| Hyperparameter optimization | L = 12752.287
+HP = 0.0365 0.00781 0.00999 -0.0088 -0.00731 -0.00582 -0.00433 -0.00283 -0.00134 0.000149 0.00164 0.00313 0.00462 0.00612 0.00761 0.0091 0.0106 0.0121 0.0136 0.0151 0.0166 0.0181 0.0195 -14.7 
+
+Iteration 11| Distributions update | L = 13085.174
+Iteration 11| Hyperparameter optimization | L = 13085.174
+HP = 0.0365 0.00781 0.00999 -0.0088 -0.00731 -0.00582 -0.00433 -0.00283 -0.00134 0.000149 0.00164 0.00313 0.00462 0.00612 0.00761 0.0091 0.0106 0.0121 0.0136 0.0151 0.0166 0.0181 0.0195 -14.7 
+
+Iteration 12| Distributions update | L = 13179.427
+Iteration 12| Hyperparameter optimization | L = 13179.427
+HP = 0.0365 0.00781 0.00999 -0.0088 -0.00731 -0.00582 -0.00433 -0.00283 -0.00134 0.000149 0.00164 0.00313 0.00462 0.00612 0.00761 0.0091 0.0106 0.0121 0.0136 0.0151 0.0166 0.0181 0.0195 -14.7 
+
+Iteration 13| Distributions update | L = 13694.655
+Iteration 13| Hyperparameter optimization | L = 13694.655
+HP = 0.0365 0.00781 0.00999 -0.0088 -0.00731 -0.00582 -0.00433 -0.00283 -0.00134 0.000149 0.00164 0.00313 0.00462 0.00612 0.00761 0.0091 0.0106 0.0121 0.0136 0.0151 0.0166 0.0181 0.0195 -14.7 
+
+Iteration 14| Distributions update | L = 13895.089
+Iteration 14| Hyperparameter optimization | L = 13895.089
+HP = 0.0365 0.00781 0.00999 -0.0088 -0.00731 -0.00582 -0.00433 -0.00283 -0.00134 0.000149 0.00164 0.00313 0.00462 0.00612 0.00761 0.0091 0.0106 0.0121 0.0136 0.0151 0.0166 0.0181 0.0195 -14.7 
+
+Iteration 15| Distributions update | L = 13948.778
+Iteration 15| Hyperparameter optimization | L = 13948.778
+HP = 0.0365 0.00781 0.00999 -0.0088 -0.00731 -0.00582 -0.00433 -0.00283 -0.00134 0.000149 0.00164 0.00313 0.00462 0.00612 0.00761 0.0091 0.0106 0.0121 0.0136 0.0151 0.0166 0.0181 0.0195 -14.7 
+
+Iteration 16| Distributions update | L = 16762.002
+Iteration 16| Hyperparameter optimization | L = 16762.002
+HP = 0.0365 0.00781 0.00999 -0.0088 -0.00731 -0.00582 -0.00433 -0.00283 -0.00134 0.000149 0.00164 0.00313 0.00462 0.00612 0.00761 0.0091 0.0106 0.0121 0.0136 0.0151 0.0166 0.0181 0.0195 -14.7 
+
+Iteration 17| Distributions update | L = 17186.94
+Iteration 17| Hyperparameter optimization | L = 17186.94
+HP = 0.0365 0.00781 0.00999 -0.0088 -0.00731 -0.00582 -0.00433 -0.00283 -0.00134 0.000149 0.00164 0.00313 0.00462 0.00612 0.00761 0.0091 0.0106 0.0121 0.0136 0.0151 0.0166 0.0181 0.0195 -14.7 
+
+Iteration 18| Distributions update | L = 17186.943
+Iteration 18| Hyperparameter optimization | L = 17186.943
+HP = 0.0365 0.00781 0.00999 -0.0088 -0.00731 -0.00582 -0.00433 -0.00283 -0.00134 0.000149 0.00164 0.00313 0.00462 0.00612 0.00761 0.0091 0.0106 0.0121 0.0136 0.0151 0.0166 0.0181 0.0195 -14.7 
+
+Iteration 19| Distributions update | L = 17186.943
+Iteration 19| Hyperparameter optimization | L = 17186.943
+HP = 0.0365 0.00781 0.00999 -0.0088 -0.00731 -0.00582 -0.00433 -0.00283 -0.00134 0.000149 0.00164 0.00313 0.00462 0.00612 0.00761 0.0091 0.0106 0.0121 0.0136 0.0151 0.0166 0.0181 0.0195 -14.7 
+
+CONVERGENCE
+Starting Variational Inference
+Initial Lower Bound L = -1.87e+08
+Iteration 1| Distributions update | L = -13579.76
+Iteration 1| Hyperparameter optimization | L = -13563.719
+HP = 0.0365 0.00772 0.00999 -0.00805 -0.00662 -0.00518 -0.00374 -0.0023 -0.000867 0.000571 0.00201 0.00345 0.00488 0.00632 0.00776 0.0092 0.0106 0.0121 0.0135 0.0149 0.0164 0.0178 0.0193 -14.6 
+
+Iteration 2| Distributions update | L = -7596.0718
+Iteration 2| Hyperparameter optimization | L = -7594.2298
+HP = 0.0365 0.00772 0.00999 -0.00805 -0.00662 -0.00518 -0.00374 -0.0023 -0.000867 0.000571 0.00201 0.00345 0.00488 0.00632 0.00776 0.0092 0.0106 0.0121 0.0135 0.0149 0.0164 0.0178 0.0193 -14.6 
+
+Iteration 3| Distributions update | L = -6394.4108
+Iteration 3| Hyperparameter optimization | L = -6394.4108
+HP = 0.0365 0.00772 0.00999 -0.00805 -0.00662 -0.00518 -0.00374 -0.0023 -0.000867 0.000571 0.00201 0.00345 0.00488 0.00632 0.00776 0.0092 0.0106 0.0121 0.0135 0.0149 0.0164 0.0178 0.0193 -14.6 
+
+Iteration 4| Distributions update | L = 1529.1784
+Iteration 4| Hyperparameter optimization | L = 1529.1784
+HP = 0.0365 0.00772 0.00999 -0.00805 -0.00662 -0.00518 -0.00374 -0.0023 -0.000867 0.000571 0.00201 0.00345 0.00488 0.00632 0.00776 0.0092 0.0106 0.0121 0.0135 0.0149 0.0164 0.0178 0.0193 -14.6 
+
+Iteration 5| Distributions update | L = 4698.0336
+Iteration 5| Hyperparameter optimization | L = 4698.0336
+HP = 0.0365 0.00772 0.00999 -0.00805 -0.00662 -0.00518 -0.00374 -0.0023 -0.000867 0.000571 0.00201 0.00345 0.00488 0.00632 0.00776 0.0092 0.0106 0.0121 0.0135 0.0149 0.0164 0.0178 0.0193 -14.6 
+
+Iteration 6| Distributions update | L = 5304.0718
+Iteration 6| Hyperparameter optimization | L = 5304.0718
+HP = 0.0365 0.00772 0.00999 -0.00805 -0.00662 -0.00518 -0.00374 -0.0023 -0.000867 0.000571 0.00201 0.00345 0.00488 0.00632 0.00776 0.0092 0.0106 0.0121 0.0135 0.0149 0.0164 0.0178 0.0193 -14.6 
+
+Iteration 7| Distributions update | L = 5888.2738
+Iteration 7| Hyperparameter optimization | L = 5888.2738
+HP = 0.0365 0.00772 0.00999 -0.00805 -0.00662 -0.00518 -0.00374 -0.0023 -0.000867 0.000571 0.00201 0.00345 0.00488 0.00632 0.00776 0.0092 0.0106 0.0121 0.0135 0.0149 0.0164 0.0178 0.0193 -14.6 
+
+Iteration 8| Distributions update | L = 6388.9042
+Iteration 8| Hyperparameter optimization | L = 6388.9042
+HP = 0.0365 0.00772 0.00999 -0.00805 -0.00662 -0.00518 -0.00374 -0.0023 -0.000867 0.000571 0.00201 0.00345 0.00488 0.00632 0.00776 0.0092 0.0106 0.0121 0.0135 0.0149 0.0164 0.0178 0.0193 -14.6 
+
+Iteration 9| Distributions update | L = 6702.2654
+Iteration 9| Hyperparameter optimization | L = 6702.2654
+HP = 0.0365 0.00772 0.00999 -0.00805 -0.00662 -0.00518 -0.00374 -0.0023 -0.000867 0.000571 0.00201 0.00345 0.00488 0.00632 0.00776 0.0092 0.0106 0.0121 0.0135 0.0149 0.0164 0.0178 0.0193 -14.6 
+
+Iteration 10| Distributions update | L = 6991.1429
+Iteration 10| Hyperparameter optimization | L = 6991.1429
+HP = 0.0365 0.00772 0.00999 -0.00805 -0.00662 -0.00518 -0.00374 -0.0023 -0.000867 0.000571 0.00201 0.00345 0.00488 0.00632 0.00776 0.0092 0.0106 0.0121 0.0135 0.0149 0.0164 0.0178 0.0193 -14.6 
+
+Iteration 11| Distributions update | L = 7091.6291
+Iteration 11| Hyperparameter optimization | L = 7091.6291
+HP = 0.0365 0.00772 0.00999 -0.00805 -0.00662 -0.00518 -0.00374 -0.0023 -0.000867 0.000571 0.00201 0.00345 0.00488 0.00632 0.00776 0.0092 0.0106 0.0121 0.0135 0.0149 0.0164 0.0178 0.0193 -14.6 
+
+Iteration 12| Distributions update | L = 10887.512
+Iteration 12| Hyperparameter optimization | L = 10887.512
+HP = 0.0365 0.00772 0.00999 -0.00805 -0.00662 -0.00518 -0.00374 -0.0023 -0.000867 0.000571 0.00201 0.00345 0.00488 0.00632 0.00776 0.0092 0.0106 0.0121 0.0135 0.0149 0.0164 0.0178 0.0193 -14.6 
+
+Iteration 13| Distributions update | L = 11412.029
+Iteration 13| Hyperparameter optimization | L = 11412.059
+HP = 0.0365 0.00772 0.00999 -0.00805 -0.00662 -0.00518 -0.00374 -0.0023 -0.000867 0.000571 0.00201 0.00345 0.00488 0.00632 0.00776 0.0092 0.0106 0.0121 0.0135 0.0149 0.0164 0.0178 0.0193 -14.6 
+
+Iteration 14| Distributions update | L = 11467.351
+Iteration 14| Hyperparameter optimization | L = 11467.351
+HP = 0.0365 0.00772 0.00999 -0.00805 -0.00662 -0.00518 -0.00374 -0.0023 -0.000867 0.000571 0.00201 0.00345 0.00488 0.00632 0.00776 0.0092 0.0106 0.0121 0.0135 0.0149 0.0164 0.0178 0.0193 -14.6 
+
+Iteration 15| Distributions update | L = 11656.06
+Iteration 15| Hyperparameter optimization | L = 11656.06
+HP = 0.0365 0.00772 0.00999 -0.00805 -0.00662 -0.00518 -0.00374 -0.0023 -0.000867 0.000571 0.00201 0.00345 0.00488 0.00632 0.00776 0.0092 0.0106 0.0121 0.0135 0.0149 0.0164 0.0178 0.0193 -14.6 
+
+Iteration 16| Distributions update | L = 11713.137
+Iteration 16| Hyperparameter optimization | L = 11713.137
+HP = 0.0365 0.00772 0.00999 -0.00805 -0.00662 -0.00518 -0.00374 -0.0023 -0.000867 0.000571 0.00201 0.00345 0.00488 0.00632 0.00776 0.0092 0.0106 0.0121 0.0135 0.0149 0.0164 0.0178 0.0193 -14.6 
+
+Iteration 17| Distributions update | L = 11718.092
+Iteration 17| Hyperparameter optimization | L = 11718.092
+HP = 0.0365 0.00772 0.00999 -0.00805 -0.00662 -0.00518 -0.00374 -0.0023 -0.000867 0.000571 0.00201 0.00345 0.00488 0.00632 0.00776 0.0092 0.0106 0.0121 0.0135 0.0149 0.0164 0.0178 0.0193 -14.6 
+
+Iteration 18| Distributions update | L = 11718.399
+Iteration 18| Hyperparameter optimization | L = 11718.399
+HP = 0.0365 0.00772 0.00999 -0.00805 -0.00662 -0.00518 -0.00374 -0.0023 -0.000867 0.000571 0.00201 0.00345 0.00488 0.00632 0.00776 0.0092 0.0106 0.0121 0.0135 0.0149 0.0164 0.0178 0.0193 -14.6 
+
+Iteration 19| Distributions update | L = 11718.399
+Iteration 19| Hyperparameter optimization | L = 11718.399
+HP = 0.0365 0.00772 0.00999 -0.00805 -0.00662 -0.00518 -0.00374 -0.0023 -0.000867 0.000571 0.00201 0.00345 0.00488 0.00632 0.00776 0.0092 0.0106 0.0121 0.0135 0.0149 0.0164 0.0178 0.0193 -14.6 
+
+Iteration 20| Distributions update | L = 11718.399
+Iteration 20| Hyperparameter optimization | L = 11718.399
+HP = 0.0365 0.00772 0.00999 -0.00805 -0.00662 -0.00518 -0.00374 -0.0023 -0.000867 0.000571 0.00201 0.00345 0.00488 0.00632 0.00776 0.0092 0.0106 0.0121 0.0135 0.0149 0.0164 0.0178 0.0193 -14.6 
+
+CONVERGENCE
+Starting Variational Inference
+Initial Lower Bound L = -1.18e+08
+Iteration 1| Distributions update | L = -7090.5766
+Iteration 1| Hyperparameter optimization | L = -7086.9103
+HP = 0.0365 0.00784 0.00999 -0.00799 -0.00651 -0.00502 -0.00353 -0.00205 -0.000561 0.000926 0.00241 0.0039 0.00538 0.00687 0.00836 0.00984 0.0113 0.0128 0.0143 0.0158 0.0173 0.0188 0.0202 -14.7 
+
+Iteration 2| Distributions update | L = -6458.3593
+Iteration 2| Hyperparameter optimization | L = -6453.7454
+HP = 0.0365 0.00784 0.00999 -0.00799 -0.00651 -0.00502 -0.00353 -0.00205 -0.000561 0.000926 0.00241 0.0039 0.00538 0.00687 0.00836 0.00984 0.0113 0.0128 0.0143 0.0158 0.0173 0.0188 0.0202 -14.7 
+
+Iteration 3| Distributions update | L = -4995.2431
+Iteration 3| Hyperparameter optimization | L = -4995.2431
+HP = 0.0365 0.00784 0.00999 -0.00799 -0.00651 -0.00502 -0.00353 -0.00205 -0.000561 0.000926 0.00241 0.0039 0.00538 0.00687 0.00836 0.00984 0.0113 0.0128 0.0143 0.0158 0.0173 0.0188 0.0202 -14.7 
+
+Iteration 4| Distributions update | L = -4211.6561
+Iteration 4| Hyperparameter optimization | L = -4211.6561
+HP = 0.0365 0.00784 0.00999 -0.00799 -0.00651 -0.00502 -0.00353 -0.00205 -0.000561 0.000926 0.00241 0.0039 0.00538 0.00687 0.00836 0.00984 0.0113 0.0128 0.0143 0.0158 0.0173 0.0188 0.0202 -14.7 
+
+Iteration 5| Distributions update | L = -2124.2651
+Iteration 5| Hyperparameter optimization | L = -2124.2651
+HP = 0.0365 0.00784 0.00999 -0.00799 -0.00651 -0.00502 -0.00353 -0.00205 -0.000561 0.000926 0.00241 0.0039 0.00538 0.00687 0.00836 0.00984 0.0113 0.0128 0.0143 0.0158 0.0173 0.0188 0.0202 -14.7 
+
+Iteration 6| Distributions update | L = -1484.9789
+Iteration 6| Hyperparameter optimization | L = -1484.9789
+HP = 0.0365 0.00784 0.00999 -0.00799 -0.00651 -0.00502 -0.00353 -0.00205 -0.000561 0.000926 0.00241 0.0039 0.00538 0.00687 0.00836 0.00984 0.0113 0.0128 0.0143 0.0158 0.0173 0.0188 0.0202 -14.7 
+
+Iteration 7| Distributions update | L = -1207.9775
+Iteration 7| Hyperparameter optimization | L = -1207.9775
+HP = 0.0365 0.00784 0.00999 -0.00799 -0.00651 -0.00502 -0.00353 -0.00205 -0.000561 0.000926 0.00241 0.0039 0.00538 0.00687 0.00836 0.00984 0.0113 0.0128 0.0143 0.0158 0.0173 0.0188 0.0202 -14.7 
+
+Iteration 8| Distributions update | L = -946.03673
+Iteration 8| Hyperparameter optimization | L = -946.03673
+HP = 0.0365 0.00784 0.00999 -0.00799 -0.00651 -0.00502 -0.00353 -0.00205 -0.000561 0.000926 0.00241 0.0039 0.00538 0.00687 0.00836 0.00984 0.0113 0.0128 0.0143 0.0158 0.0173 0.0188 0.0202 -14.7 
+
+Iteration 9| Distributions update | L = -165.12772
+Iteration 9| Hyperparameter optimization | L = -165.12772
+HP = 0.0365 0.00784 0.00999 -0.00799 -0.00651 -0.00502 -0.00353 -0.00205 -0.000561 0.000926 0.00241 0.0039 0.00538 0.00687 0.00836 0.00984 0.0113 0.0128 0.0143 0.0158 0.0173 0.0188 0.0202 -14.7 
+
+Iteration 10| Distributions update | L = 308.15604
+Iteration 10| Hyperparameter optimization | L = 308.15604
+HP = 0.0365 0.00784 0.00999 -0.00799 -0.00651 -0.00502 -0.00353 -0.00205 -0.000561 0.000926 0.00241 0.0039 0.00538 0.00687 0.00836 0.00984 0.0113 0.0128 0.0143 0.0158 0.0173 0.0188 0.0202 -14.7 
+
+Iteration 11| Distributions update | L = 529.54587
+Iteration 11| Hyperparameter optimization | L = 529.54587
+HP = 0.0365 0.00784 0.00999 -0.00799 -0.00651 -0.00502 -0.00353 -0.00205 -0.000561 0.000926 0.00241 0.0039 0.00538 0.00687 0.00836 0.00984 0.0113 0.0128 0.0143 0.0158 0.0173 0.0188 0.0202 -14.7 
+
+Iteration 12| Distributions update | L = 1049.912
+Iteration 12| Hyperparameter optimization | L = 1049.912
+HP = 0.0365 0.00784 0.00999 -0.00799 -0.00651 -0.00502 -0.00353 -0.00205 -0.000561 0.000926 0.00241 0.0039 0.00538 0.00687 0.00836 0.00984 0.0113 0.0128 0.0143 0.0158 0.0173 0.0188 0.0202 -14.7 
+
+Iteration 13| Distributions update | L = 1306.2652
+Iteration 13| Hyperparameter optimization | L = 1306.2652
+HP = 0.0365 0.00784 0.00999 -0.00799 -0.00651 -0.00502 -0.00353 -0.00205 -0.000561 0.000926 0.00241 0.0039 0.00538 0.00687 0.00836 0.00984 0.0113 0.0128 0.0143 0.0158 0.0173 0.0188 0.0202 -14.7 
+
+Iteration 14| Distributions update | L = 1383.4853
+Iteration 14| Hyperparameter optimization | L = 1385.11
+HP = 0.0365 0.00784 0.00999 -0.00799 -0.00651 -0.00502 -0.00353 -0.00205 -0.000561 0.000926 0.00241 0.0039 0.00538 0.00687 0.00836 0.00984 0.0113 0.0128 0.0143 0.0158 0.0173 0.0188 0.0202 -14.7 
+
+Iteration 15| Distributions update | L = 1669.003
+Iteration 15| Hyperparameter optimization | L = 1669.003
+HP = 0.0365 0.00784 0.00999 -0.00799 -0.00651 -0.00502 -0.00353 -0.00205 -0.000561 0.000926 0.00241 0.0039 0.00538 0.00687 0.00836 0.00984 0.0113 0.0128 0.0143 0.0158 0.0173 0.0188 0.0202 -14.7 
+
+Iteration 16| Distributions update | L = 2088.6188
+Iteration 16| Hyperparameter optimization | L = 2088.6188
+HP = 0.0365 0.00784 0.00999 -0.00799 -0.00651 -0.00502 -0.00353 -0.00205 -0.000561 0.000926 0.00241 0.0039 0.00538 0.00687 0.00836 0.00984 0.0113 0.0128 0.0143 0.0158 0.0173 0.0188 0.0202 -14.7 
+
+Iteration 17| Distributions update | L = 2141.6869
+Iteration 17| Hyperparameter optimization | L = 2141.6869
+HP = 0.0365 0.00784 0.00999 -0.00799 -0.00651 -0.00502 -0.00353 -0.00205 -0.000561 0.000926 0.00241 0.0039 0.00538 0.00687 0.00836 0.00984 0.0113 0.0128 0.0143 0.0158 0.0173 0.0188 0.0202 -14.7 
+
+Iteration 18| Distributions update | L = 2245.854
+Iteration 18| Hyperparameter optimization | L = 2245.854
+HP = 0.0365 0.00784 0.00999 -0.00799 -0.00651 -0.00502 -0.00353 -0.00205 -0.000561 0.000926 0.00241 0.0039 0.00538 0.00687 0.00836 0.00984 0.0113 0.0128 0.0143 0.0158 0.0173 0.0188 0.0202 -14.7 
+
+Iteration 19| Distributions update | L = 2352.3375
+Iteration 19| Hyperparameter optimization | L = 2352.3375
+HP = 0.0365 0.00784 0.00999 -0.00799 -0.00651 -0.00502 -0.00353 -0.00205 -0.000561 0.000926 0.00241 0.0039 0.00538 0.00687 0.00836 0.00984 0.0113 0.0128 0.0143 0.0158 0.0173 0.0188 0.0202 -14.7 
+
+Iteration 20| Distributions update | L = 2435.4082
+Iteration 20| Hyperparameter optimization | L = 2435.4082
+HP = 0.0365 0.00784 0.00999 -0.00799 -0.00651 -0.00502 -0.00353 -0.00205 -0.000561 0.000926 0.00241 0.0039 0.00538 0.00687 0.00836 0.00984 0.0113 0.0128 0.0143 0.0158 0.0173 0.0188 0.0202 -14.7 
+
+Starting Variational Inference
+Initial Lower Bound L = -1.38e+08
+Iteration 1| Distributions update | L = -8027.3122
+Iteration 1| Hyperparameter optimization | L = -8005.9034
+HP = 0.0365 0.00796 0.00999 -0.00839 -0.00692 -0.00545 -0.00398 -0.00251 -0.00104 0.000428 0.0019 0.00337 0.00483 0.0063 0.00777 0.00924 0.0107 0.0122 0.0136 0.0151 0.0166 0.0181 0.0195 -14.8 
+
+Iteration 2| Distributions update | L = -6116.2299
+Iteration 2| Hyperparameter optimization | L = -6116.2299
+HP = 0.0365 0.00796 0.00999 -0.00839 -0.00692 -0.00545 -0.00398 -0.00251 -0.00104 0.000428 0.0019 0.00337 0.00483 0.0063 0.00777 0.00924 0.0107 0.0122 0.0136 0.0151 0.0166 0.0181 0.0195 -14.8 
+
+Iteration 3| Distributions update | L = -5830.9243
+Iteration 3| Hyperparameter optimization | L = -5830.9243
+HP = 0.0365 0.00796 0.00999 -0.00839 -0.00692 -0.00545 -0.00398 -0.00251 -0.00104 0.000428 0.0019 0.00337 0.00483 0.0063 0.00777 0.00924 0.0107 0.0122 0.0136 0.0151 0.0166 0.0181 0.0195 -14.8 
+
+Iteration 4| Distributions update | L = -4467.412
+Iteration 4| Hyperparameter optimization | L = -4467.412
+HP = 0.0365 0.00796 0.00999 -0.00839 -0.00692 -0.00545 -0.00398 -0.00251 -0.00104 0.000428 0.0019 0.00337 0.00483 0.0063 0.00777 0.00924 0.0107 0.0122 0.0136 0.0151 0.0166 0.0181 0.0195 -14.8 
+
+Iteration 5| Distributions update | L = -2403.3741
+Iteration 5| Hyperparameter optimization | L = -2403.3741
+HP = 0.0365 0.00796 0.00999 -0.00839 -0.00692 -0.00545 -0.00398 -0.00251 -0.00104 0.000428 0.0019 0.00337 0.00483 0.0063 0.00777 0.00924 0.0107 0.0122 0.0136 0.0151 0.0166 0.0181 0.0195 -14.8 
+
+Iteration 6| Distributions update | L = -1443.1892
+Iteration 6| Hyperparameter optimization | L = -1440.8968
+HP = 0.0365 0.00796 0.00999 -0.00839 -0.00692 -0.00545 -0.00398 -0.00251 -0.00104 0.000428 0.0019 0.00337 0.00483 0.0063 0.00777 0.00924 0.0107 0.0122 0.0136 0.0151 0.0166 0.0181 0.0195 -14.8 
+
+Iteration 7| Distributions update | L = -1136.0682
+Iteration 7| Hyperparameter optimization | L = -1136.0682
+HP = 0.0365 0.00796 0.00999 -0.00839 -0.00692 -0.00545 -0.00398 -0.00251 -0.00104 0.000428 0.0019 0.00337 0.00483 0.0063 0.00777 0.00924 0.0107 0.0122 0.0136 0.0151 0.0166 0.0181 0.0195 -14.8 
+
+Iteration 8| Distributions update | L = -732.80296
+Iteration 8| Hyperparameter optimization | L = -732.80296
+HP = 0.0365 0.00796 0.00999 -0.00839 -0.00692 -0.00545 -0.00398 -0.00251 -0.00104 0.000428 0.0019 0.00337 0.00483 0.0063 0.00777 0.00924 0.0107 0.0122 0.0136 0.0151 0.0166 0.0181 0.0195 -14.8 
+
+Iteration 9| Distributions update | L = -594.2879
+Iteration 9| Hyperparameter optimization | L = -594.2879
+HP = 0.0365 0.00796 0.00999 -0.00839 -0.00692 -0.00545 -0.00398 -0.00251 -0.00104 0.000428 0.0019 0.00337 0.00483 0.0063 0.00777 0.00924 0.0107 0.0122 0.0136 0.0151 0.0166 0.0181 0.0195 -14.8 
+
+Iteration 10| Distributions update | L = -339.48633
+Iteration 10| Hyperparameter optimization | L = -339.48633
+HP = 0.0365 0.00796 0.00999 -0.00839 -0.00692 -0.00545 -0.00398 -0.00251 -0.00104 0.000428 0.0019 0.00337 0.00483 0.0063 0.00777 0.00924 0.0107 0.0122 0.0136 0.0151 0.0166 0.0181 0.0195 -14.8 
+
+Iteration 11| Distributions update | L = 290.60921
+Iteration 11| Hyperparameter optimization | L = 290.60921
+HP = 0.0365 0.00796 0.00999 -0.00839 -0.00692 -0.00545 -0.00398 -0.00251 -0.00104 0.000428 0.0019 0.00337 0.00483 0.0063 0.00777 0.00924 0.0107 0.0122 0.0136 0.0151 0.0166 0.0181 0.0195 -14.8 
+
+Iteration 12| Distributions update | L = 691.90717
+Iteration 12| Hyperparameter optimization | L = 691.90717
+HP = 0.0365 0.00796 0.00999 -0.00839 -0.00692 -0.00545 -0.00398 -0.00251 -0.00104 0.000428 0.0019 0.00337 0.00483 0.0063 0.00777 0.00924 0.0107 0.0122 0.0136 0.0151 0.0166 0.0181 0.0195 -14.8 
+
+Iteration 13| Distributions update | L = 1235.7302
+Iteration 13| Hyperparameter optimization | L = 1235.7302
+HP = 0.0365 0.00796 0.00999 -0.00839 -0.00692 -0.00545 -0.00398 -0.00251 -0.00104 0.000428 0.0019 0.00337 0.00483 0.0063 0.00777 0.00924 0.0107 0.0122 0.0136 0.0151 0.0166 0.0181 0.0195 -14.8 
+
+Iteration 14| Distributions update | L = 1847.9392
+Iteration 14| Hyperparameter optimization | L = 1847.9392
+HP = 0.0365 0.00796 0.00999 -0.00839 -0.00692 -0.00545 -0.00398 -0.00251 -0.00104 0.000428 0.0019 0.00337 0.00483 0.0063 0.00777 0.00924 0.0107 0.0122 0.0136 0.0151 0.0166 0.0181 0.0195 -14.8 
+
+Iteration 15| Distributions update | L = 5386.6
+Iteration 15| Hyperparameter optimization | L = 5386.6
+HP = 0.0365 0.00796 0.00999 -0.00839 -0.00692 -0.00545 -0.00398 -0.00251 -0.00104 0.000428 0.0019 0.00337 0.00483 0.0063 0.00777 0.00924 0.0107 0.0122 0.0136 0.0151 0.0166 0.0181 0.0195 -14.8 
+
+Iteration 16| Distributions update | L = 5548.7622
+Iteration 16| Hyperparameter optimization | L = 5548.7622
+HP = 0.0365 0.00796 0.00999 -0.00839 -0.00692 -0.00545 -0.00398 -0.00251 -0.00104 0.000428 0.0019 0.00337 0.00483 0.0063 0.00777 0.00924 0.0107 0.0122 0.0136 0.0151 0.0166 0.0181 0.0195 -14.8 
+
+Iteration 17| Distributions update | L = 5552.7536
+Iteration 17| Hyperparameter optimization | L = 5552.7536
+HP = 0.0365 0.00796 0.00999 -0.00839 -0.00692 -0.00545 -0.00398 -0.00251 -0.00104 0.000428 0.0019 0.00337 0.00483 0.0063 0.00777 0.00924 0.0107 0.0122 0.0136 0.0151 0.0166 0.0181 0.0195 -14.8 
+
+Iteration 18| Distributions update | L = 5557.8875
+Iteration 18| Hyperparameter optimization | L = 5557.8875
+HP = 0.0365 0.00796 0.00999 -0.00839 -0.00692 -0.00545 -0.00398 -0.00251 -0.00104 0.000428 0.0019 0.00337 0.00483 0.0063 0.00777 0.00924 0.0107 0.0122 0.0136 0.0151 0.0166 0.0181 0.0195 -14.8 
+
+Iteration 19| Distributions update | L = 5558.2879
+Iteration 19| Hyperparameter optimization | L = 5558.2879
+HP = 0.0365 0.00796 0.00999 -0.00839 -0.00692 -0.00545 -0.00398 -0.00251 -0.00104 0.000428 0.0019 0.00337 0.00483 0.0063 0.00777 0.00924 0.0107 0.0122 0.0136 0.0151 0.0166 0.0181 0.0195 -14.8 
+
+Iteration 20| Distributions update | L = 5558.288
+Iteration 20| Hyperparameter optimization | L = 5558.288
+HP = 0.0365 0.00796 0.00999 -0.00839 -0.00692 -0.00545 -0.00398 -0.00251 -0.00104 0.000428 0.0019 0.00337 0.00483 0.0063 0.00777 0.00924 0.0107 0.0122 0.0136 0.0151 0.0166 0.0181 0.0195 -14.8 
+
+Starting Variational Inference
+Initial Lower Bound L = -2.27e+08
+Iteration 1| Distributions update | L = -4666.8527
+Iteration 1| Hyperparameter optimization | L = -4659.2544
+HP = 0.0365 0.00808 0.00999 -0.00662 -0.00541 -0.00419 -0.00298 -0.00176 -0.000548 0.000668 0.00188 0.0031 0.00431 0.00553 0.00674 0.00796 0.00918 0.0104 0.0116 0.0128 0.014 0.0153 0.0165 -15 
+
+Iteration 2| Distributions update | L = -19.989938
+Iteration 2| Hyperparameter optimization | L = -19.989938
+HP = 0.0365 0.00808 0.00999 -0.00662 -0.00541 -0.00419 -0.00298 -0.00176 -0.000548 0.000668 0.00188 0.0031 0.00431 0.00553 0.00674 0.00796 0.00918 0.0104 0.0116 0.0128 0.014 0.0153 0.0165 -15 
+
+Iteration 3| Distributions update | L = 1211.082
+Iteration 3| Hyperparameter optimization | L = 1211.1641
+HP = 0.0365 0.00808 0.00999 -0.00662 -0.00541 -0.00419 -0.00298 -0.00176 -0.000548 0.000668 0.00188 0.0031 0.00431 0.00553 0.00674 0.00796 0.00918 0.0104 0.0116 0.0128 0.014 0.0153 0.0165 -15 
+
+Iteration 4| Distributions update | L = 1447.335
+Iteration 4| Hyperparameter optimization | L = 1447.335
+HP = 0.0365 0.00808 0.00999 -0.00662 -0.00541 -0.00419 -0.00298 -0.00176 -0.000548 0.000668 0.00188 0.0031 0.00431 0.00553 0.00674 0.00796 0.00918 0.0104 0.0116 0.0128 0.014 0.0153 0.0165 -15 
+
+Iteration 5| Distributions update | L = 1749.2152
+Iteration 5| Hyperparameter optimization | L = 1749.2152
+HP = 0.0365 0.00808 0.00999 -0.00662 -0.00541 -0.00419 -0.00298 -0.00176 -0.000548 0.000668 0.00188 0.0031 0.00431 0.00553 0.00674 0.00796 0.00918 0.0104 0.0116 0.0128 0.014 0.0153 0.0165 -15 
+
+Iteration 6| Distributions update | L = 2055.7068
+Iteration 6| Hyperparameter optimization | L = 2059.3613
+HP = 0.0365 0.00808 0.00999 -0.00662 -0.00541 -0.00419 -0.00298 -0.00176 -0.000548 0.000668 0.00188 0.0031 0.00431 0.00553 0.00674 0.00796 0.00918 0.0104 0.0116 0.0128 0.014 0.0153 0.0165 -15 
+
+Iteration 7| Distributions update | L = 2259.157
+Iteration 7| Hyperparameter optimization | L = 2259.157
+HP = 0.0365 0.00808 0.00999 -0.00662 -0.00541 -0.00419 -0.00298 -0.00176 -0.000548 0.000668 0.00188 0.0031 0.00431 0.00553 0.00674 0.00796 0.00918 0.0104 0.0116 0.0128 0.014 0.0153 0.0165 -15 
+
+Iteration 8| Distributions update | L = 2323.3517
+Iteration 8| Hyperparameter optimization | L = 2323.3517
+HP = 0.0365 0.00808 0.00999 -0.00662 -0.00541 -0.00419 -0.00298 -0.00176 -0.000548 0.000668 0.00188 0.0031 0.00431 0.00553 0.00674 0.00796 0.00918 0.0104 0.0116 0.0128 0.014 0.0153 0.0165 -15 
+
+Iteration 9| Distributions update | L = 2461.9201
+Iteration 9| Hyperparameter optimization | L = 2461.9201
+HP = 0.0365 0.00808 0.00999 -0.00662 -0.00541 -0.00419 -0.00298 -0.00176 -0.000548 0.000668 0.00188 0.0031 0.00431 0.00553 0.00674 0.00796 0.00918 0.0104 0.0116 0.0128 0.014 0.0153 0.0165 -15 
+
+Iteration 10| Distributions update | L = 2988.4651
+Iteration 10| Hyperparameter optimization | L = 2988.4651
+HP = 0.0365 0.00808 0.00999 -0.00662 -0.00541 -0.00419 -0.00298 -0.00176 -0.000548 0.000668 0.00188 0.0031 0.00431 0.00553 0.00674 0.00796 0.00918 0.0104 0.0116 0.0128 0.014 0.0153 0.0165 -15 
+
+Iteration 11| Distributions update | L = 3234.68
+Iteration 11| Hyperparameter optimization | L = 3234.68
+HP = 0.0365 0.00808 0.00999 -0.00662 -0.00541 -0.00419 -0.00298 -0.00176 -0.000548 0.000668 0.00188 0.0031 0.00431 0.00553 0.00674 0.00796 0.00918 0.0104 0.0116 0.0128 0.014 0.0153 0.0165 -15 
+
+Iteration 12| Distributions update | L = 3330.0117
+Iteration 12| Hyperparameter optimization | L = 3330.0117
+HP = 0.0365 0.00808 0.00999 -0.00662 -0.00541 -0.00419 -0.00298 -0.00176 -0.000548 0.000668 0.00188 0.0031 0.00431 0.00553 0.00674 0.00796 0.00918 0.0104 0.0116 0.0128 0.014 0.0153 0.0165 -15 
+
+Iteration 13| Distributions update | L = 3424.1825
+Iteration 13| Hyperparameter optimization | L = 3424.1825
+HP = 0.0365 0.00808 0.00999 -0.00662 -0.00541 -0.00419 -0.00298 -0.00176 -0.000548 0.000668 0.00188 0.0031 0.00431 0.00553 0.00674 0.00796 0.00918 0.0104 0.0116 0.0128 0.014 0.0153 0.0165 -15 
+
+Iteration 14| Distributions update | L = 3490.5116
+Iteration 14| Hyperparameter optimization | L = 3490.5116
+HP = 0.0365 0.00808 0.00999 -0.00662 -0.00541 -0.00419 -0.00298 -0.00176 -0.000548 0.000668 0.00188 0.0031 0.00431 0.00553 0.00674 0.00796 0.00918 0.0104 0.0116 0.0128 0.014 0.0153 0.0165 -15 
+
+Iteration 15| Distributions update | L = 3563.4611
+Iteration 15| Hyperparameter optimization | L = 3563.4611
+HP = 0.0365 0.00808 0.00999 -0.00662 -0.00541 -0.00419 -0.00298 -0.00176 -0.000548 0.000668 0.00188 0.0031 0.00431 0.00553 0.00674 0.00796 0.00918 0.0104 0.0116 0.0128 0.014 0.0153 0.0165 -15 
+
+Iteration 16| Distributions update | L = 8224.4972
+Iteration 16| Hyperparameter optimization | L = 8224.4972
+HP = 0.0365 0.00808 0.00999 -0.00662 -0.00541 -0.00419 -0.00298 -0.00176 -0.000548 0.000668 0.00188 0.0031 0.00431 0.00553 0.00674 0.00796 0.00918 0.0104 0.0116 0.0128 0.014 0.0153 0.0165 -15 
+
+Iteration 17| Distributions update | L = 8232.364
+Iteration 17| Hyperparameter optimization | L = 8232.364
+HP = 0.0365 0.00808 0.00999 -0.00662 -0.00541 -0.00419 -0.00298 -0.00176 -0.000548 0.000668 0.00188 0.0031 0.00431 0.00553 0.00674 0.00796 0.00918 0.0104 0.0116 0.0128 0.014 0.0153 0.0165 -15 
+
+Iteration 18| Distributions update | L = 8232.364
+Iteration 18| Hyperparameter optimization | L = 8232.364
+HP = 0.0365 0.00808 0.00999 -0.00662 -0.00541 -0.00419 -0.00298 -0.00176 -0.000548 0.000668 0.00188 0.0031 0.00431 0.00553 0.00674 0.00796 0.00918 0.0104 0.0116 0.0128 0.014 0.0153 0.0165 -15 
+
+Iteration 19| Distributions update | L = 8232.364
+Iteration 19| Hyperparameter optimization | L = 8232.364
+HP = 0.0365 0.00808 0.00999 -0.00662 -0.00541 -0.00419 -0.00298 -0.00176 -0.000548 0.000668 0.00188 0.0031 0.00431 0.00553 0.00674 0.00796 0.00918 0.0104 0.0116 0.0128 0.014 0.0153 0.0165 -15 
+
+CONVERGENCE
+Starting Variational Inference
+Initial Lower Bound L = -1.12e+08
+Iteration 1| Distributions update | L = -4117.6761
+Iteration 1| Hyperparameter optimization | L = -4105.6762
+HP = 0.0365 0.00801 0.00999 -0.00926 -0.00792 -0.00657 -0.00522 -0.00388 -0.00253 -0.00118 0.000164 0.00151 0.00286 0.0042 0.00555 0.0069 0.00825 0.00959 0.0109 0.0123 0.0136 0.015 0.0163 -14.9 
+
+Iteration 2| Distributions update | L = -2652.6774
+Iteration 2| Hyperparameter optimization | L = -2652.6774
+HP = 0.0365 0.00801 0.00999 -0.00926 -0.00792 -0.00657 -0.00522 -0.00388 -0.00253 -0.00118 0.000164 0.00151 0.00286 0.0042 0.00555 0.0069 0.00825 0.00959 0.0109 0.0123 0.0136 0.015 0.0163 -14.9 
+
+Iteration 3| Distributions update | L = -1269.7045
+Iteration 3| Hyperparameter optimization | L = -1269.7045
+HP = 0.0365 0.00801 0.00999 -0.00926 -0.00792 -0.00657 -0.00522 -0.00388 -0.00253 -0.00118 0.000164 0.00151 0.00286 0.0042 0.00555 0.0069 0.00825 0.00959 0.0109 0.0123 0.0136 0.015 0.0163 -14.9 
+
+Iteration 4| Distributions update | L = 96.232681
+Iteration 4| Hyperparameter optimization | L = 96.232681
+HP = 0.0365 0.00801 0.00999 -0.00926 -0.00792 -0.00657 -0.00522 -0.00388 -0.00253 -0.00118 0.000164 0.00151 0.00286 0.0042 0.00555 0.0069 0.00825 0.00959 0.0109 0.0123 0.0136 0.015 0.0163 -14.9 
+
+Iteration 5| Distributions update | L = 649.09321
+Iteration 5| Hyperparameter optimization | L = 649.09321
+HP = 0.0365 0.00801 0.00999 -0.00926 -0.00792 -0.00657 -0.00522 -0.00388 -0.00253 -0.00118 0.000164 0.00151 0.00286 0.0042 0.00555 0.0069 0.00825 0.00959 0.0109 0.0123 0.0136 0.015 0.0163 -14.9 
+
+Iteration 6| Distributions update | L = 922.69911
+Iteration 6| Hyperparameter optimization | L = 922.69911
+HP = 0.0365 0.00801 0.00999 -0.00926 -0.00792 -0.00657 -0.00522 -0.00388 -0.00253 -0.00118 0.000164 0.00151 0.00286 0.0042 0.00555 0.0069 0.00825 0.00959 0.0109 0.0123 0.0136 0.015 0.0163 -14.9 
+
+Iteration 7| Distributions update | L = 1007.7913
+Iteration 7| Hyperparameter optimization | L = 1007.7913
+HP = 0.0365 0.00801 0.00999 -0.00926 -0.00792 -0.00657 -0.00522 -0.00388 -0.00253 -0.00118 0.000164 0.00151 0.00286 0.0042 0.00555 0.0069 0.00825 0.00959 0.0109 0.0123 0.0136 0.015 0.0163 -14.9 
+
+Iteration 8| Distributions update | L = 1493.1349
+Iteration 8| Hyperparameter optimization | L = 1493.1349
+HP = 0.0365 0.00801 0.00999 -0.00926 -0.00792 -0.00657 -0.00522 -0.00388 -0.00253 -0.00118 0.000164 0.00151 0.00286 0.0042 0.00555 0.0069 0.00825 0.00959 0.0109 0.0123 0.0136 0.015 0.0163 -14.9 
+
+Iteration 9| Distributions update | L = 1538.0178
+Iteration 9| Hyperparameter optimization | L = 1538.4436
+HP = 0.0365 0.00801 0.00999 -0.00926 -0.00792 -0.00657 -0.00522 -0.00388 -0.00253 -0.00118 0.000164 0.00151 0.00286 0.0042 0.00555 0.0069 0.00825 0.00959 0.0109 0.0123 0.0136 0.015 0.0163 -14.9 
+
+Iteration 10| Distributions update | L = 1597.3314
+Iteration 10| Hyperparameter optimization | L = 1597.3314
+HP = 0.0365 0.00801 0.00999 -0.00926 -0.00792 -0.00657 -0.00522 -0.00388 -0.00253 -0.00118 0.000164 0.00151 0.00286 0.0042 0.00555 0.0069 0.00825 0.00959 0.0109 0.0123 0.0136 0.015 0.0163 -14.9 
+
+Iteration 11| Distributions update | L = 1660.8765
+Iteration 11| Hyperparameter optimization | L = 1660.8765
+HP = 0.0365 0.00801 0.00999 -0.00926 -0.00792 -0.00657 -0.00522 -0.00388 -0.00253 -0.00118 0.000164 0.00151 0.00286 0.0042 0.00555 0.0069 0.00825 0.00959 0.0109 0.0123 0.0136 0.015 0.0163 -14.9 
+
+Iteration 12| Distributions update | L = 1727.2602
+Iteration 12| Hyperparameter optimization | L = 1727.2602
+HP = 0.0365 0.00801 0.00999 -0.00926 -0.00792 -0.00657 -0.00522 -0.00388 -0.00253 -0.00118 0.000164 0.00151 0.00286 0.0042 0.00555 0.0069 0.00825 0.00959 0.0109 0.0123 0.0136 0.015 0.0163 -14.9 
+
+Iteration 13| Distributions update | L = 1779.7344
+Iteration 13| Hyperparameter optimization | L = 1779.7344
+HP = 0.0365 0.00801 0.00999 -0.00926 -0.00792 -0.00657 -0.00522 -0.00388 -0.00253 -0.00118 0.000164 0.00151 0.00286 0.0042 0.00555 0.0069 0.00825 0.00959 0.0109 0.0123 0.0136 0.015 0.0163 -14.9 
+
+Iteration 14| Distributions update | L = 1830.3024
+Iteration 14| Hyperparameter optimization | L = 1830.3024
+HP = 0.0365 0.00801 0.00999 -0.00926 -0.00792 -0.00657 -0.00522 -0.00388 -0.00253 -0.00118 0.000164 0.00151 0.00286 0.0042 0.00555 0.0069 0.00825 0.00959 0.0109 0.0123 0.0136 0.015 0.0163 -14.9 
+
+Iteration 15| Distributions update | L = 1971.0631
+Iteration 15| Hyperparameter optimization | L = 1971.0631
+HP = 0.0365 0.00801 0.00999 -0.00926 -0.00792 -0.00657 -0.00522 -0.00388 -0.00253 -0.00118 0.000164 0.00151 0.00286 0.0042 0.00555 0.0069 0.00825 0.00959 0.0109 0.0123 0.0136 0.015 0.0163 -14.9 
+
+Iteration 16| Distributions update | L = 2085.6433
+Iteration 16| Hyperparameter optimization | L = 2085.6433
+HP = 0.0365 0.00801 0.00999 -0.00926 -0.00792 -0.00657 -0.00522 -0.00388 -0.00253 -0.00118 0.000164 0.00151 0.00286 0.0042 0.00555 0.0069 0.00825 0.00959 0.0109 0.0123 0.0136 0.015 0.0163 -14.9 
+
+Iteration 17| Distributions update | L = 2117.6735
+Iteration 17| Hyperparameter optimization | L = 2118.6165
+HP = 0.0365 0.00801 0.00999 -0.00926 -0.00792 -0.00657 -0.00522 -0.00388 -0.00253 -0.00118 0.000164 0.00151 0.00286 0.0042 0.00555 0.0069 0.00825 0.00959 0.0109 0.0123 0.0136 0.015 0.0163 -14.9 
+
+Iteration 18| Distributions update | L = 2162.4443
+Iteration 18| Hyperparameter optimization | L = 2162.4443
+HP = 0.0365 0.00801 0.00999 -0.00926 -0.00792 -0.00657 -0.00522 -0.00388 -0.00253 -0.00118 0.000164 0.00151 0.00286 0.0042 0.00555 0.0069 0.00825 0.00959 0.0109 0.0123 0.0136 0.015 0.0163 -14.9 
+
+Iteration 19| Distributions update | L = 2192.7035
+Iteration 19| Hyperparameter optimization | L = 2192.7035
+HP = 0.0365 0.00801 0.00999 -0.00926 -0.00792 -0.00657 -0.00522 -0.00388 -0.00253 -0.00118 0.000164 0.00151 0.00286 0.0042 0.00555 0.0069 0.00825 0.00959 0.0109 0.0123 0.0136 0.015 0.0163 -14.9 
+
+Iteration 20| Distributions update | L = 2193.6793
+Iteration 20| Hyperparameter optimization | L = 2193.6793
+HP = 0.0365 0.00801 0.00999 -0.00926 -0.00792 -0.00657 -0.00522 -0.00388 -0.00253 -0.00118 0.000164 0.00151 0.00286 0.0042 0.00555 0.0069 0.00825 0.00959 0.0109 0.0123 0.0136 0.015 0.0163 -14.9 
+
+Starting Variational Inference
+Initial Lower Bound L = -9.34e+07
+Iteration 1| Distributions update | L = -6854.8043
+Iteration 1| Hyperparameter optimization | L = -6836.6598
+HP = 0.0365 0.0079 0.00999 -0.00696 -0.00574 -0.00452 -0.00329 -0.00207 -0.00085 0.000372 0.00159 0.00282 0.00404 0.00526 0.00648 0.00771 0.00893 0.0102 0.0114 0.0126 0.0138 0.015 0.0163 -14.8 
+
+Iteration 2| Distributions update | L = -6258.7269
+Iteration 2| Hyperparameter optimization | L = -6257.6473
+HP = 0.0365 0.0079 0.00999 -0.00696 -0.00574 -0.00452 -0.00329 -0.00207 -0.00085 0.000372 0.00159 0.00282 0.00404 0.00526 0.00648 0.00771 0.00893 0.0102 0.0114 0.0126 0.0138 0.015 0.0163 -14.8 
+
+Iteration 3| Distributions update | L = -3162.2999
+Iteration 3| Hyperparameter optimization | L = -3162.2999
+HP = 0.0365 0.0079 0.00999 -0.00696 -0.00574 -0.00452 -0.00329 -0.00207 -0.00085 0.000372 0.00159 0.00282 0.00404 0.00526 0.00648 0.00771 0.00893 0.0102 0.0114 0.0126 0.0138 0.015 0.0163 -14.8 
+
+Iteration 4| Distributions update | L = -1741.5743
+Iteration 4| Hyperparameter optimization | L = -1741.5743
+HP = 0.0365 0.0079 0.00999 -0.00696 -0.00574 -0.00452 -0.00329 -0.00207 -0.00085 0.000372 0.00159 0.00282 0.00404 0.00526 0.00648 0.00771 0.00893 0.0102 0.0114 0.0126 0.0138 0.015 0.0163 -14.8 
+
+Iteration 5| Distributions update | L = -1322.6462
+Iteration 5| Hyperparameter optimization | L = -1322.6462
+HP = 0.0365 0.0079 0.00999 -0.00696 -0.00574 -0.00452 -0.00329 -0.00207 -0.00085 0.000372 0.00159 0.00282 0.00404 0.00526 0.00648 0.00771 0.00893 0.0102 0.0114 0.0126 0.0138 0.015 0.0163 -14.8 
+
+Iteration 6| Distributions update | L = -928.70232
+Iteration 6| Hyperparameter optimization | L = -927.55063
+HP = 0.0365 0.0079 0.00999 -0.00696 -0.00574 -0.00452 -0.00329 -0.00207 -0.00085 0.000372 0.00159 0.00282 0.00404 0.00526 0.00648 0.00771 0.00893 0.0102 0.0114 0.0126 0.0138 0.015 0.0163 -14.8 
+
+Iteration 7| Distributions update | L = -747.21167
+Iteration 7| Hyperparameter optimization | L = -747.21167
+HP = 0.0365 0.0079 0.00999 -0.00696 -0.00574 -0.00452 -0.00329 -0.00207 -0.00085 0.000372 0.00159 0.00282 0.00404 0.00526 0.00648 0.00771 0.00893 0.0102 0.0114 0.0126 0.0138 0.015 0.0163 -14.8 
+
+Iteration 8| Distributions update | L = -324.06724
+Iteration 8| Hyperparameter optimization | L = -324.06724
+HP = 0.0365 0.0079 0.00999 -0.00696 -0.00574 -0.00452 -0.00329 -0.00207 -0.00085 0.000372 0.00159 0.00282 0.00404 0.00526 0.00648 0.00771 0.00893 0.0102 0.0114 0.0126 0.0138 0.015 0.0163 -14.8 
+
+Iteration 9| Distributions update | L = 113.63645
+Iteration 9| Hyperparameter optimization | L = 113.63645
+HP = 0.0365 0.0079 0.00999 -0.00696 -0.00574 -0.00452 -0.00329 -0.00207 -0.00085 0.000372 0.00159 0.00282 0.00404 0.00526 0.00648 0.00771 0.00893 0.0102 0.0114 0.0126 0.0138 0.015 0.0163 -14.8 
+
+Iteration 10| Distributions update | L = 238.47043
+Iteration 10| Hyperparameter optimization | L = 238.47043
+HP = 0.0365 0.0079 0.00999 -0.00696 -0.00574 -0.00452 -0.00329 -0.00207 -0.00085 0.000372 0.00159 0.00282 0.00404 0.00526 0.00648 0.00771 0.00893 0.0102 0.0114 0.0126 0.0138 0.015 0.0163 -14.8 
+
+Iteration 11| Distributions update | L = 337.74739
+Iteration 11| Hyperparameter optimization | L = 338.52146
+HP = 0.0365 0.0079 0.00999 -0.00696 -0.00574 -0.00452 -0.00329 -0.00207 -0.00085 0.000372 0.00159 0.00282 0.00404 0.00526 0.00648 0.00771 0.00893 0.0102 0.0114 0.0126 0.0138 0.015 0.0163 -14.8 
+
+Iteration 12| Distributions update | L = 376.31636
+Iteration 12| Hyperparameter optimization | L = 376.31636
+HP = 0.0365 0.0079 0.00999 -0.00696 -0.00574 -0.00452 -0.00329 -0.00207 -0.00085 0.000372 0.00159 0.00282 0.00404 0.00526 0.00648 0.00771 0.00893 0.0102 0.0114 0.0126 0.0138 0.015 0.0163 -14.8 
+
+Iteration 13| Distributions update | L = 444.73563
+Iteration 13| Hyperparameter optimization | L = 444.73563
+HP = 0.0365 0.0079 0.00999 -0.00696 -0.00574 -0.00452 -0.00329 -0.00207 -0.00085 0.000372 0.00159 0.00282 0.00404 0.00526 0.00648 0.00771 0.00893 0.0102 0.0114 0.0126 0.0138 0.015 0.0163 -14.8 
+
+Iteration 14| Distributions update | L = 538.10409
+Iteration 14| Hyperparameter optimization | L = 538.10409
+HP = 0.0365 0.0079 0.00999 -0.00696 -0.00574 -0.00452 -0.00329 -0.00207 -0.00085 0.000372 0.00159 0.00282 0.00404 0.00526 0.00648 0.00771 0.00893 0.0102 0.0114 0.0126 0.0138 0.015 0.0163 -14.8 
+
+Iteration 15| Distributions update | L = 626.84281
+Iteration 15| Hyperparameter optimization | L = 626.84281
+HP = 0.0365 0.0079 0.00999 -0.00696 -0.00574 -0.00452 -0.00329 -0.00207 -0.00085 0.000372 0.00159 0.00282 0.00404 0.00526 0.00648 0.00771 0.00893 0.0102 0.0114 0.0126 0.0138 0.015 0.0163 -14.8 
+
+Iteration 16| Distributions update | L = 660.05678
+Iteration 16| Hyperparameter optimization | L = 660.05678
+HP = 0.0365 0.0079 0.00999 -0.00696 -0.00574 -0.00452 -0.00329 -0.00207 -0.00085 0.000372 0.00159 0.00282 0.00404 0.00526 0.00648 0.00771 0.00893 0.0102 0.0114 0.0126 0.0138 0.015 0.0163 -14.8 
+
+Iteration 17| Distributions update | L = 1511.9136
+Iteration 17| Hyperparameter optimization | L = 1511.9136
+HP = 0.0365 0.0079 0.00999 -0.00696 -0.00574 -0.00452 -0.00329 -0.00207 -0.00085 0.000372 0.00159 0.00282 0.00404 0.00526 0.00648 0.00771 0.00893 0.0102 0.0114 0.0126 0.0138 0.015 0.0163 -14.8 
+
+Iteration 18| Distributions update | L = 1637.3604
+Iteration 18| Hyperparameter optimization | L = 1637.3604
+HP = 0.0365 0.0079 0.00999 -0.00696 -0.00574 -0.00452 -0.00329 -0.00207 -0.00085 0.000372 0.00159 0.00282 0.00404 0.00526 0.00648 0.00771 0.00893 0.0102 0.0114 0.0126 0.0138 0.015 0.0163 -14.8 
+
+Iteration 19| Distributions update | L = 1698.7661
+Iteration 19| Hyperparameter optimization | L = 1698.7661
+HP = 0.0365 0.0079 0.00999 -0.00696 -0.00574 -0.00452 -0.00329 -0.00207 -0.00085 0.000372 0.00159 0.00282 0.00404 0.00526 0.00648 0.00771 0.00893 0.0102 0.0114 0.0126 0.0138 0.015 0.0163 -14.8 
+
+Iteration 20| Distributions update | L = 1721.1886
+Iteration 20| Hyperparameter optimization | L = 1721.1886
+HP = 0.0365 0.0079 0.00999 -0.00696 -0.00574 -0.00452 -0.00329 -0.00207 -0.00085 0.000372 0.00159 0.00282 0.00404 0.00526 0.00648 0.00771 0.00893 0.0102 0.0114 0.0126 0.0138 0.015 0.0163 -14.8 
+
+Starting Variational Inference
+Initial Lower Bound L = -8.31e+07
+Iteration 1| Distributions update | L = -7190.1565
+Iteration 1| Hyperparameter optimization | L = -7184.0427
+HP = 0.0365 0.00801 0.00999 -0.0123 -0.0109 -0.00945 -0.00802 -0.00659 -0.00517 -0.00374 -0.00231 -0.000877 0.000553 0.00198 0.00341 0.00484 0.00627 0.0077 0.00913 0.0106 0.012 0.0134 0.0148 -14.9 
+
+Iteration 2| Distributions update | L = -5462.7683
+Iteration 2| Hyperparameter optimization | L = -5462.7683
+HP = 0.0365 0.00801 0.00999 -0.0123 -0.0109 -0.00945 -0.00802 -0.00659 -0.00517 -0.00374 -0.00231 -0.000877 0.000553 0.00198 0.00341 0.00484 0.00627 0.0077 0.00913 0.0106 0.012 0.0134 0.0148 -14.9 
+
+Iteration 3| Distributions update | L = -4948.6887
+Iteration 3| Hyperparameter optimization | L = -4948.6887
+HP = 0.0365 0.00801 0.00999 -0.0123 -0.0109 -0.00945 -0.00802 -0.00659 -0.00517 -0.00374 -0.00231 -0.000877 0.000553 0.00198 0.00341 0.00484 0.00627 0.0077 0.00913 0.0106 0.012 0.0134 0.0148 -14.9 
+
+Iteration 4| Distributions update | L = -4735.7616
+Iteration 4| Hyperparameter optimization | L = -4735.7616
+HP = 0.0365 0.00801 0.00999 -0.0123 -0.0109 -0.00945 -0.00802 -0.00659 -0.00517 -0.00374 -0.00231 -0.000877 0.000553 0.00198 0.00341 0.00484 0.00627 0.0077 0.00913 0.0106 0.012 0.0134 0.0148 -14.9 
+
+Iteration 5| Distributions update | L = -4276.7024
+Iteration 5| Hyperparameter optimization | L = -4276.7024
+HP = 0.0365 0.00801 0.00999 -0.0123 -0.0109 -0.00945 -0.00802 -0.00659 -0.00517 -0.00374 -0.00231 -0.000877 0.000553 0.00198 0.00341 0.00484 0.00627 0.0077 0.00913 0.0106 0.012 0.0134 0.0148 -14.9 
+
+Iteration 6| Distributions update | L = -3930.6151
+Iteration 6| Hyperparameter optimization | L = -3930.6151
+HP = 0.0365 0.00801 0.00999 -0.0123 -0.0109 -0.00945 -0.00802 -0.00659 -0.00517 -0.00374 -0.00231 -0.000877 0.000553 0.00198 0.00341 0.00484 0.00627 0.0077 0.00913 0.0106 0.012 0.0134 0.0148 -14.9 
+
+Iteration 7| Distributions update | L = -3539.0985
+Iteration 7| Hyperparameter optimization | L = -3539.0985
+HP = 0.0365 0.00801 0.00999 -0.0123 -0.0109 -0.00945 -0.00802 -0.00659 -0.00517 -0.00374 -0.00231 -0.000877 0.000553 0.00198 0.00341 0.00484 0.00627 0.0077 0.00913 0.0106 0.012 0.0134 0.0148 -14.9 
+
+Iteration 8| Distributions update | L = -2519.2513
+Iteration 8| Hyperparameter optimization | L = -2519.2513
+HP = 0.0365 0.00801 0.00999 -0.0123 -0.0109 -0.00945 -0.00802 -0.00659 -0.00517 -0.00374 -0.00231 -0.000877 0.000553 0.00198 0.00341 0.00484 0.00627 0.0077 0.00913 0.0106 0.012 0.0134 0.0148 -14.9 
+
+Iteration 9| Distributions update | L = -1600.593
+Iteration 9| Hyperparameter optimization | L = -1600.385
+HP = 0.0365 0.00801 0.00999 -0.0123 -0.0109 -0.00945 -0.00802 -0.00659 -0.00517 -0.00374 -0.00231 -0.000877 0.000553 0.00198 0.00341 0.00484 0.00627 0.0077 0.00913 0.0106 0.012 0.0134 0.0148 -14.9 
+
+Iteration 10| Distributions update | L = -1478.0569
+Iteration 10| Hyperparameter optimization | L = -1478.0569
+HP = 0.0365 0.00801 0.00999 -0.0123 -0.0109 -0.00945 -0.00802 -0.00659 -0.00517 -0.00374 -0.00231 -0.000877 0.000553 0.00198 0.00341 0.00484 0.00627 0.0077 0.00913 0.0106 0.012 0.0134 0.0148 -14.9 
+
+Iteration 11| Distributions update | L = -1268.7372
+Iteration 11| Hyperparameter optimization | L = -1268.7372
+HP = 0.0365 0.00801 0.00999 -0.0123 -0.0109 -0.00945 -0.00802 -0.00659 -0.00517 -0.00374 -0.00231 -0.000877 0.000553 0.00198 0.00341 0.00484 0.00627 0.0077 0.00913 0.0106 0.012 0.0134 0.0148 -14.9 
+
+Iteration 12| Distributions update | L = -1076.5413
+Iteration 12| Hyperparameter optimization | L = -1076.5413
+HP = 0.0365 0.00801 0.00999 -0.0123 -0.0109 -0.00945 -0.00802 -0.00659 -0.00517 -0.00374 -0.00231 -0.000877 0.000553 0.00198 0.00341 0.00484 0.00627 0.0077 0.00913 0.0106 0.012 0.0134 0.0148 -14.9 
+
+Iteration 13| Distributions update | L = -829.19015
+Iteration 13| Hyperparameter optimization | L = -829.19015
+HP = 0.0365 0.00801 0.00999 -0.0123 -0.0109 -0.00945 -0.00802 -0.00659 -0.00517 -0.00374 -0.00231 -0.000877 0.000553 0.00198 0.00341 0.00484 0.00627 0.0077 0.00913 0.0106 0.012 0.0134 0.0148 -14.9 
+
+Iteration 14| Distributions update | L = -615.47538
+Iteration 14| Hyperparameter optimization | L = -615.47538
+HP = 0.0365 0.00801 0.00999 -0.0123 -0.0109 -0.00945 -0.00802 -0.00659 -0.00517 -0.00374 -0.00231 -0.000877 0.000553 0.00198 0.00341 0.00484 0.00627 0.0077 0.00913 0.0106 0.012 0.0134 0.0148 -14.9 
+
+Iteration 15| Distributions update | L = -559.29188
+Iteration 15| Hyperparameter optimization | L = -559.05924
+HP = 0.0365 0.00801 0.00999 -0.0123 -0.0109 -0.00945 -0.00802 -0.00659 -0.00517 -0.00374 -0.00231 -0.000877 0.000553 0.00198 0.00341 0.00484 0.00627 0.0077 0.00913 0.0106 0.012 0.0134 0.0148 -14.9 
+
+Iteration 16| Distributions update | L = -386.75613
+Iteration 16| Hyperparameter optimization | L = -386.75613
+HP = 0.0365 0.00801 0.00999 -0.0123 -0.0109 -0.00945 -0.00802 -0.00659 -0.00517 -0.00374 -0.00231 -0.000877 0.000553 0.00198 0.00341 0.00484 0.00627 0.0077 0.00913 0.0106 0.012 0.0134 0.0148 -14.9 
+
+Iteration 17| Distributions update | L = -345.95786
+Iteration 17| Hyperparameter optimization | L = -345.95786
+HP = 0.0365 0.00801 0.00999 -0.0123 -0.0109 -0.00945 -0.00802 -0.00659 -0.00517 -0.00374 -0.00231 -0.000877 0.000553 0.00198 0.00341 0.00484 0.00627 0.0077 0.00913 0.0106 0.012 0.0134 0.0148 -14.9 
+
+Iteration 18| Distributions update | L = -167.30408
+Iteration 18| Hyperparameter optimization | L = -167.30408
+HP = 0.0365 0.00801 0.00999 -0.0123 -0.0109 -0.00945 -0.00802 -0.00659 -0.00517 -0.00374 -0.00231 -0.000877 0.000553 0.00198 0.00341 0.00484 0.00627 0.0077 0.00913 0.0106 0.012 0.0134 0.0148 -14.9 
+
+Iteration 19| Distributions update | L = -59.419576
+Iteration 19| Hyperparameter optimization | L = -59.208818
+HP = 0.0365 0.00801 0.00999 -0.0123 -0.0109 -0.00945 -0.00802 -0.00659 -0.00517 -0.00374 -0.00231 -0.000877 0.000553 0.00198 0.00341 0.00484 0.00627 0.0077 0.00913 0.0106 0.012 0.0134 0.0148 -14.9 
+
+Iteration 20| Distributions update | L = 78.700192
+Iteration 20| Hyperparameter optimization | L = 78.700192
+HP = 0.0365 0.00801 0.00999 -0.0123 -0.0109 -0.00945 -0.00802 -0.00659 -0.00517 -0.00374 -0.00231 -0.000877 0.000553 0.00198 0.00341 0.00484 0.00627 0.0077 0.00913 0.0106 0.012 0.0134 0.0148 -14.9 
+
+Starting Variational Inference
+Initial Lower Bound L = -5.76e+07
+Iteration 1| Distributions update | L = -3720.7817
+Iteration 1| Hyperparameter optimization | L = -3720.7817
+HP = 0.0365 0.00826 0.00999 -0.00573 -0.00466 -0.00358 -0.00251 -0.00144 -0.000362 0.000712 0.00179 0.00286 0.00393 0.00501 0.00608 0.00715 0.00823 0.0093 0.0104 0.0114 0.0125 0.0136 0.0147 -15.2 
+
+Iteration 2| Distributions update | L = -2144.6782
+Iteration 2| Hyperparameter optimization | L = -2144.6782
+HP = 0.0365 0.00826 0.00999 -0.00573 -0.00466 -0.00358 -0.00251 -0.00144 -0.000362 0.000712 0.00179 0.00286 0.00393 0.00501 0.00608 0.00715 0.00823 0.0093 0.0104 0.0114 0.0125 0.0136 0.0147 -15.2 
+
+Iteration 3| Distributions update | L = -1840.7371
+Iteration 3| Hyperparameter optimization | L = -1840.5839
+HP = 0.0365 0.00826 0.00999 -0.00573 -0.00466 -0.00358 -0.00251 -0.00144 -0.000362 0.000712 0.00179 0.00286 0.00393 0.00501 0.00608 0.00715 0.00823 0.0093 0.0104 0.0114 0.0125 0.0136 0.0147 -15.2 
+
+Iteration 4| Distributions update | L = -1733.823
+Iteration 4| Hyperparameter optimization | L = -1733.823
+HP = 0.0365 0.00826 0.00999 -0.00573 -0.00466 -0.00358 -0.00251 -0.00144 -0.000362 0.000712 0.00179 0.00286 0.00393 0.00501 0.00608 0.00715 0.00823 0.0093 0.0104 0.0114 0.0125 0.0136 0.0147 -15.2 
+
+Iteration 5| Distributions update | L = -1525.51
+Iteration 5| Hyperparameter optimization | L = -1525.51
+HP = 0.0365 0.00826 0.00999 -0.00573 -0.00466 -0.00358 -0.00251 -0.00144 -0.000362 0.000712 0.00179 0.00286 0.00393 0.00501 0.00608 0.00715 0.00823 0.0093 0.0104 0.0114 0.0125 0.0136 0.0147 -15.2 
+
+Iteration 6| Distributions update | L = -1400.4772
+Iteration 6| Hyperparameter optimization | L = -1399.8975
+HP = 0.0365 0.00826 0.00999 -0.00573 -0.00466 -0.00358 -0.00251 -0.00144 -0.000362 0.000712 0.00179 0.00286 0.00393 0.00501 0.00608 0.00715 0.00823 0.0093 0.0104 0.0114 0.0125 0.0136 0.0147 -15.2 
+
+Iteration 7| Distributions update | L = -1294.6214
+Iteration 7| Hyperparameter optimization | L = -1294.6214
+HP = 0.0365 0.00826 0.00999 -0.00573 -0.00466 -0.00358 -0.00251 -0.00144 -0.000362 0.000712 0.00179 0.00286 0.00393 0.00501 0.00608 0.00715 0.00823 0.0093 0.0104 0.0114 0.0125 0.0136 0.0147 -15.2 
+
+Iteration 8| Distributions update | L = -1279.5334
+Iteration 8| Hyperparameter optimization | L = -1279.5334
+HP = 0.0365 0.00826 0.00999 -0.00573 -0.00466 -0.00358 -0.00251 -0.00144 -0.000362 0.000712 0.00179 0.00286 0.00393 0.00501 0.00608 0.00715 0.00823 0.0093 0.0104 0.0114 0.0125 0.0136 0.0147 -15.2 
+
+Iteration 9| Distributions update | L = -1233.7875
+Iteration 9| Hyperparameter optimization | L = -1233.7875
+HP = 0.0365 0.00826 0.00999 -0.00573 -0.00466 -0.00358 -0.00251 -0.00144 -0.000362 0.000712 0.00179 0.00286 0.00393 0.00501 0.00608 0.00715 0.00823 0.0093 0.0104 0.0114 0.0125 0.0136 0.0147 -15.2 
+
+Iteration 10| Distributions update | L = -254.83704
+Iteration 10| Hyperparameter optimization | L = -254.83704
+HP = 0.0365 0.00826 0.00999 -0.00573 -0.00466 -0.00358 -0.00251 -0.00144 -0.000362 0.000712 0.00179 0.00286 0.00393 0.00501 0.00608 0.00715 0.00823 0.0093 0.0104 0.0114 0.0125 0.0136 0.0147 -15.2 
+
+Iteration 11| Distributions update | L = -16.369085
+Iteration 11| Hyperparameter optimization | L = -16.369085
+HP = 0.0365 0.00826 0.00999 -0.00573 -0.00466 -0.00358 -0.00251 -0.00144 -0.000362 0.000712 0.00179 0.00286 0.00393 0.00501 0.00608 0.00715 0.00823 0.0093 0.0104 0.0114 0.0125 0.0136 0.0147 -15.2 
+
+Iteration 12| Distributions update | L = -16.117715
+Iteration 12| Hyperparameter optimization | L = -16.117715
+HP = 0.0365 0.00826 0.00999 -0.00573 -0.00466 -0.00358 -0.00251 -0.00144 -0.000362 0.000712 0.00179 0.00286 0.00393 0.00501 0.00608 0.00715 0.00823 0.0093 0.0104 0.0114 0.0125 0.0136 0.0147 -15.2 
+
+Iteration 13| Distributions update | L = 22.650373
+Iteration 13| Hyperparameter optimization | L = 22.650373
+HP = 0.0365 0.00826 0.00999 -0.00573 -0.00466 -0.00358 -0.00251 -0.00144 -0.000362 0.000712 0.00179 0.00286 0.00393 0.00501 0.00608 0.00715 0.00823 0.0093 0.0104 0.0114 0.0125 0.0136 0.0147 -15.2 
+
+Iteration 14| Distributions update | L = 27.312894
+Iteration 14| Hyperparameter optimization | L = 27.312894
+HP = 0.0365 0.00826 0.00999 -0.00573 -0.00466 -0.00358 -0.00251 -0.00144 -0.000362 0.000712 0.00179 0.00286 0.00393 0.00501 0.00608 0.00715 0.00823 0.0093 0.0104 0.0114 0.0125 0.0136 0.0147 -15.2 
+
+Iteration 15| Distributions update | L = 49.230807
+Iteration 15| Hyperparameter optimization | L = 49.23773
+HP = 0.0365 0.00826 0.00999 -0.00573 -0.00466 -0.00358 -0.00251 -0.00144 -0.000362 0.000712 0.00179 0.00286 0.00393 0.00501 0.00608 0.00715 0.00823 0.0093 0.0104 0.0114 0.0125 0.0136 0.0147 -15.2 
+
+Iteration 16| Distributions update | L = 49.241876
+Iteration 16| Hyperparameter optimization | L = 49.241876
+HP = 0.0365 0.00826 0.00999 -0.00573 -0.00466 -0.00358 -0.00251 -0.00144 -0.000362 0.000712 0.00179 0.00286 0.00393 0.00501 0.00608 0.00715 0.00823 0.0093 0.0104 0.0114 0.0125 0.0136 0.0147 -15.2 
+
+Iteration 17| Distributions update | L = 49.241876
+Iteration 17| Hyperparameter optimization | L = 49.241876
+HP = 0.0365 0.00826 0.00999 -0.00573 -0.00466 -0.00358 -0.00251 -0.00144 -0.000362 0.000712 0.00179 0.00286 0.00393 0.00501 0.00608 0.00715 0.00823 0.0093 0.0104 0.0114 0.0125 0.0136 0.0147 -15.2 
+
+Iteration 18| Distributions update | L = 49.241876
+Iteration 18| Hyperparameter optimization | L = 49.241876
+HP = 0.0365 0.00826 0.00999 -0.00573 -0.00466 -0.00358 -0.00251 -0.00144 -0.000362 0.000712 0.00179 0.00286 0.00393 0.00501 0.00608 0.00715 0.00823 0.0093 0.0104 0.0114 0.0125 0.0136 0.0147 -15.2 
+
+CONVERGENCE
+Error in xData[, k] : subscript out of bounds
+In addition: There were 32 warnings (use warnings() to see them)
+Execution halted
