@@ -1,6 +1,6 @@
 close all; clear all
 
-description='FirstAttempt';
+description='SecondAttempt';
 
 
 err=1e-5; count_max=10; %for zero finding iteration code
@@ -23,26 +23,34 @@ KDrift=readmatrix('KDrift.csv');
 DiffFit=DiffFit(:, 2:30);  DriftFit=DriftFit(:, 2:30);  BasisDiff=BasisDiff(:, 2:30); 
 KDiff=KDiff(:, 2:30); KDrif=KDrift(2:end); 
 
-nNaN=1; x0MIN=1; x0MAX=1; Uplot=1; x0Plot=1; STB=1; 
+nNaN=1; x0MIN=1; x0MAX=1; Uplot=1; x0Plot=1; STB=1; K_R=nan(Nu,3);
 for k=1:Nu-1
+     xU=xsave{k}; xU=xU(:); 
+      p=99; 
+     [~,indS]=min(abs(xfit-prctile(xU,100-p)));[~,indE]=min(abs(xfit-prctile(xU,p))); %% find parts of xfit vector corresponding to xU range
+     
+     d1xfit=DriftFit(indS:indE,k);
     
-    D1xfit=DriftFit(:,k);
-    xfitu=xfitsave{k}; nu=length(xfitu); D1xfit=D1xfit(1:nu); %puts nans at bottom
-    xU=xsave{k}; xU=xU(:); 
+       
+      xfitu=xfit(indS:indE); 
+   
     sigN=std(xU); sigF=KDrift(1,k); sigL=KDrift(2,k); 
    
+    K_R(k,1)=sigL;
+    K_R(k,2)=sigF;
+    K_R(k,3)=sigN; 
     
     %bad=isnan(D1xfit); D1xfit(bad)=[]; xfitu(bad)=[]; 
     
     
-    [x0,stb]=ZeroGPR(xfitu,D1xfit,err,count_max,Nx); x0=sort(x0);  %find zero's
+    [x0,stb]=ZeroGPR(xfitu,d1xfit,err,count_max,Nx); x0=sort(x0);  %find zero's
      n0=length(x0);
      
       fprintf('have zeros for bin %f / %f',k,Nu)
      
      %% uncertainty estimates 
 
-     [x0Dist,x0min,x0max,nnn,Leff] = x0uncertaintyR(xU,xfitu,D1xfit,x0,sigN,sigL,sigF,itts,err,count_max,prc,reg); 
+     [x0Dist,x0min,x0max,nnn,Leff] = x0uncertaintyR(xU,xfitu,d1xfit,x0,sigN,sigL,sigF,itts,err,count_max,prc,reg); 
    
     fprintf('have uncertainty for bin %f / %f \n',k,Nu)
      
@@ -111,4 +119,37 @@ xlabel('U - scaled'); ylabel('x')
 title('Diffusion')
 set(gca,'YDir','normal')
 %saveas(diff,'diffAdam.png');
+
+load('MatLabEquivOfRrun')  
+
+figure
+hold on 
+grid on
+plot(Ubin,K_R(:,1),'o')
+plot(Ubin,KDriftSave(:,1),'o')
+xlabel('U')
+ylabel('sig L')
+legend('R','Matlab')
+
+
+figure
+hold on 
+grid on
+plot(Ubin,K_R(:,2),'o')
+plot(Ubin,KDriftSave(:,2),'o')
+xlabel('U')
+ylabel('sig F')
+legend('R','Matlab')
+
+
+figure
+hold on 
+grid on
+plot(Ubin,K_R(:,3),'o')
+plot(Ubin,KDriftSave(:,3),'o')
+xlabel('U')
+ylabel('sig N')
+legend('R','Matlab')
+
+
 

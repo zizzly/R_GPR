@@ -32,8 +32,13 @@ xfit=linspace(min(x),max(x),Nx)'; dx=xfit(2)-xfit(1);
    
    
  end 
+
+ %Usave{1}=U;
+ %Usave{2}=Ubin; 
  
- save(strcat('vwRunForR',description)); 
+ 
+
+save(strcat('vwRunForRAug15',description)); 
  
 writecell(xsave',strcat('vwXBin',description,'.txt'))
 writematrix(xfit,strcat('vwXfit',description,'.txt'))

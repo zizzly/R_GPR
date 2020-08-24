@@ -9,9 +9,9 @@ T=2000
 x = simulate_sde(drift, diffusion, dt, T)
 plot.ts(x, ylab = "x(t)", xlab = "Time t", main = "Ornstein-Uhlenbeck process")
 
-
+ptm <- proc.time()
 ## GP parameters
-m=20
+m=50
 uncertainty=3
 targetIndex=1
 inputDim=1
@@ -39,6 +39,7 @@ diffPredict=predict(fit$diff,xnew,lognormal=TRUE, ,quantiles = c(0.05,0.95))
 
 driftTrue=eval(parse(text=drift), list(x=xnew))
 
+proc.time() - ptm
 ## Plot Drift
 plot(driftPredict, ylab = "drift f(x)", xlab = "x", main = "Ornstein-Uhlenbeck process Drift")
 lines(xnew,driftTrue, col=2)

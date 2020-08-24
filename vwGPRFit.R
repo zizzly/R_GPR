@@ -2,7 +2,7 @@ rm(list=ls())    #clear variables
 library("voila")
 ## Load Data 
 
-description <- "SecondAttempt"
+description <- "Aug24"
 
 filename <- paste0("vwXBin",description,".txt")
 xData <- read.csv(filename)
@@ -13,7 +13,7 @@ xfit=t(xfit)
 
 #UData <- read.csv("vwU.txt")
 #UData=t(UData)
-Nu <- 30  
+Nu <- 15  
 
 Nx <- 1000
 
@@ -26,7 +26,7 @@ BasisDiffSave <- matrix(nrow=2,ncol=Nu)
 
 dt=1
 ## Variables  
-m=20               #Matlab using 2000
+m=50               #Matlab using 2000
 uncertainty=0.001  #Sigma from matlab model fit 
 targetIndex=1
 inputDim=1

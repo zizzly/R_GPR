@@ -12,7 +12,7 @@ Nu=30; Nx=1000;
 dt=1;
 err=1e-5; count_max=10; %for zero finding iteration code
 prc=97.5; itts=1000; reg=1e-12;
-
+tic 
 %% initialize 
 Uplot=1; x0Plot=1; 
 D1xfit=nan(Nx,Nu); D2xfit=nan(Nx,Nu);
@@ -20,17 +20,18 @@ D1xfit=nan(Nx,Nu); D2xfit=nan(Nx,Nu);
  x0Dist=cell(Nu,1); 
  nNaN=1;
  STB=1; 
-
+KDriftSave=nan(Nu,3); 
+KDiffSave=nan(Nu,3); 
  for bu=1:Nu
 
      xU=xsave(:,bu); 
      bad=isnan(xU); 
      xU(bad)=[]; 
       DxU=xU(2:end)-xU(1:end-1); xU=xU(1:end-1);
-     p=99; 
+     p=97.5; 
      [~,indS]=min(abs(xfit-prctile(xU,100-p)));[~,indE]=min(abs(xfit-prctile(xU,p))); %% find parts of xfit vector corresponding to xU range
         
-      %xfitu=xfit(indS:indE); 
+      xfitu=xfit(indS:indE); 
       m1=length(xfitu); m2=length(indS:indE); 
      if m1 ~=m2
          indE=indE-1;
@@ -42,11 +43,25 @@ D1xfit=nan(Nx,Nu); D2xfit=nan(Nx,Nu);
      D2xU=(1/dt)*DxU.*DxU;     % calculate diffusions 
      D2xUlog=log(D2xU);
    
-     model= fitrgp(xU(:), D1xU,'BasisFunction','none','ActiveSetMethod','likelihood','PredictMethod','sr','Holdout',0.2);   %create GPR fit for drift
+     model= fitrgp(xU(:), D1xU,'BasisFunction','none','FitMethod','sd','ActiveSetMethod','likelihood','PredictMethod','sr','Holdout',0.2);   %create GPR fit for drift
+   % model= fitrgp(xU(:), D1xU,'BasisFunction','none','FitMethod','exact','PredictMethod','sr','Holdout',0.2);   %create GPR fit for drift
     
      model2=fitrgp(xU(:),D2xUlog,'BasisFunction','constant','ActiveSetMethod','likelihood','PredictMethod','sr','Holdout',0.2);      
      model=model.Trained{1};
      model2=model2.Trained{1};
+     
+     kparam=model.KernelInformation.KernelParameters; 
+     KDriftSave(bu,1)=kparam(1); 
+     KDriftSave(bu,2)=kparam(2); 
+     KDriftSave(bu,3)=model.Sigma ;
+     
+     kparam2=model2.KernelInformation.KernelParameters; 
+     KDiffSave(bu,1)=kparam2(1); 
+     KDiffSave(bu,2)=kparam2(2); 
+     KDiffSave(bu,3)=model2.Sigma;
+     
+     
+     
      
      fprintf('have fit models for bin %f / %f \n',bu,Nu)
      D1xfit(indS:indE,bu)=predict(model,xfitu); %calculate drift predictions at xfit - defined in parameters section
@@ -101,6 +116,9 @@ Q = 1.5e-5;                 % normalized net radiation parameter from vdW
  ds=0.001;Smax=5;  dx=0.0001; dU=0.001;  itts=50; x01=max(x0Plot); 
  
 [Umodel,xmodel,~]= vw_pseudoArclength(Q,cd,lambda,x01,dx,dU,ds,Smax,itts);
+
+toc
+
 save('MatLabEquivOfRrun')  
 
 figure 
@@ -135,7 +153,7 @@ figure
 imagesc(Ubin,xfit,sqrt(D2xfit))
 colormap jet
 set(gca,'YDir','normal')
-%caxis([0,5e-3])
+caxis([0,5e-3])
 colorbar
 axis([0,2.5,-0.01,0.08])
 xlabel('U - scaled'); ylabel('x')

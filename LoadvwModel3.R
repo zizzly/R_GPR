@@ -85,7 +85,7 @@ uncertainty=KDriftSave[1,k] #Sigma from matlab model fit
 driftLength=KDriftSave[2,k] #sigmaL from matlab model fit 
 diffLength=KDiffSave[2,k] 
 write.csv(DriftFit,'DriftFit.csv')
-write.csv(DiffFit,'DiffFit.csv')
+which.min(abs(x-your.number))write.csv(DiffFit,'DiffFit.csv')
 write.csv(KDriftSave,'KDrift.csv')
 write.csv(KDiffSave,'KDiff.csv')
 write.csv(BasisDiffSave,'BasisDiff.csv')
