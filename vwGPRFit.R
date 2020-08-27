@@ -35,8 +35,8 @@ diffLength=0.01    #
 eps=1e-11
 Tol=1e-10
 
-MaxIt <-20 #number of itterationns 
-HPit <-  5     #number of hyperparameter itts
+MaxIt <-5 #number of itterationns 
+HPit <-  2     #number of hyperparameter itts
 
 ## will eventually by a loop over U's
 
